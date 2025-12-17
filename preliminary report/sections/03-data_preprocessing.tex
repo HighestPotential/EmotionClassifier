@@ -14,7 +14,7 @@ We use MediaPipe for face detection, increasing the size of low-resolution image
 \subsection{Backgrounds and Image Quality}
 \noindent\textbf{Cropping:} If the face is small ($<10\%$ of the image), we crop to center it. We keep some background to help the model handle environmental noise.
 
-\noindent\textbf{Blur \& Deduplication:} We remove blurry images using the \textbf{Laplacian method}~\cite{bansal2016blur}, this will also remove cartoon images and we remove exact duplicates using \textbf{SHA-256 hashing}, or \textbf{Perceptual Hashing} if more performance is needed.
+\noindent\textbf{Blur \& Deduplication:} We remove blurry images using the \textbf{Laplacian method}~\cite{bansal2016blur}, this will also remove cartoon images and we remove exact duplicates using \textbf{SHA-256 hashing}, or \textbf{Perceptual Hashing}~\cite{kandepet2017perceptual} if more performance is needed.
 
 \subsection{Imbalance and Reduction of Background Noise}
 To reduce the effect of background noise, we will experiment using an \textbf{Attention-Hybrid CNN}. This architecture learns to focus on facial features over background noise. We handle the imbalance in emotion classes using \textbf{Class-Balanced Focal Loss}~\cite{cui2019class} instead of reducing the data, further more about it.
