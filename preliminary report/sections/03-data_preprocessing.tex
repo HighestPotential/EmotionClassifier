@@ -1,4 +1,20 @@
-\section{Data preprocessing}
+\section{Methodology: Data Preprocessing}
 \label{sec:data_preprocessing}
 
-\TODO{Write section on Data preprocessing}
+\subsection{Approach and Quality Control}
+We prioritize a large dataset, but try to maintain quality. We clean unconstrained images to remove noise that hurts model training.
+
+\subsection{Detection and Geometric Filtering}
+We use MediaPipe for face detection, increasing the size of low-resolution images for accuracy, because MediaPipe was trained on bigger images.
+
+\noindent\textbf{Occlusion:} Images are removed if no face is found or if key face parts (both eyes, nose) are blocked.
+
+\noindent\textbf{Pose Constraints:} We reject images with a Yaw (left/right) rotation over 45 degrees. Pitch (up/down) and Roll (tilt) are also limited to avoid extreme angles, ensuring features are visible.
+
+\subsection{Backgrounds and Image Quality}
+\noindent\textbf{Cropping:} If the face is small ($<10\%$ of the image), we crop to center it. We keep some background to help the model handle environmental noise.
+
+\noindent\textbf{Blur \& Deduplication:} We remove blurry images using the \textbf{Laplacian method}~\cite{bansal2016blur}, this will also remove cartoon images and we remove exact duplicates using \textbf{SHA-256 hashing}, or \textbf{Perceptual Hashing} if more performance is needed.
+
+\subsection{Imbalance and Reduction of Background Noise}
+To reduce the effect of background noise, we will experiment using an \textbf{Attention-Hybrid CNN}. This architecture learns to focus on facial features over background noise. We handle the imbalance in emotion classes using \textbf{Class-Balanced Focal Loss}~\cite{cui2019class} instead of reducing the data, further more about it.
