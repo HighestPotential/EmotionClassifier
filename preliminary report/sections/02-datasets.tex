@@ -2,23 +2,25 @@
 \label{sec:datasets}
 
 To ensure reliable and comparable results, four widely used benchmark datasets from the literature were selected to train 
-and evaluate the proposed models. All datasets contain facial images categorized into the seven target expressions:
-disgust, fear, happiness, sadness, surprise, and neutral. The datasets employed are Facial Expression Recognition 2013 Plus
-(FER2013+) \cite{deep_network_fer}, Real-World Affective Face Database (RAF-DB) \cite{Li_2017_CVPR},
+and evaluate the proposed models. All datasets contain facial images categorized into the six target expressions:
+anger, disgust, fear, happiness, sadness and surprise. The datasets employed are Facial Expression Recognition 2013 Plus
+(FER+) \cite{deep_network_fer}, Real-World Affective Face Database (RAF-DB) \cite{Li_2017_CVPR},
 Cohn–Kanade (CK+) \cite{CK_dataset}, and 
 AffectNet \cite{8013713}.
 
-FER2013+ was chosen instead of the original FER2013 due to its improved labelling quality, which has a direct impact on 
+FER+ was chosen instead of the original FER2013 due to its improved labelling quality, which has a direct impact on 
 model performance and reliability. In addition, the selected datasets provide diversity in terms of age, ethnicity, and gender,
 which is essential for improving the generalization capability of the models. Both AffectNet, CK+ and FER+ include an 
 additional contempt label, however, this class is excluded from the experiments, as it falls outside the scope of the 
 present study.
 
-All images are resized to 64×64 pixels to facilitate structural exploration and reduce computational complexity. 
-The data include both grayscale and RGB images. Image formats vary between JPEG and PNG, which does not affect the preprocessing
+All images have to be resized to 64×64 pixels and grayscaled to facilitate structural exploration and reduce computational complexity. 
+The data includes both grayscale and RGB images. Image formats vary between JPEG and PNG, which does not affect the preprocessing
 or training pipeline.
 
 Regarding dataset characteristics, the selected subset of AffectNet contains 27,755 RGB images with a resolution of 96×96 pixels
 in JPEG format. The CK+ dataset consists of 927 grayscale images with a resolution of 48×48 pixels in PNG
-format. FER2013+ includes 69,263 grayscale images at 112×112 pixels, also in PNG format. Finally, RAF-DB comprises 15,339 images,
+format. FER+ includes 69,263 grayscale images at 112×112 pixels, also in PNG format. Finally, RAF-DB comprises 15,339 images,
 both grayscale and RGB, with a resolution of 100×100 pixels in JPEG format.
+
+
