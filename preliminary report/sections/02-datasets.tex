@@ -1,11 +1,5 @@
 \section{Datasets}
 \label{sec:datasets}
-\usepackage[table]{xcolor}
-\usepackage{array}
-
- \vspace{1em}
- \rowcolors{0}{}{}
-
 
 To ensure reliable and comparable results, four widely used benchmark datasets from the literature were selected to train 
 and evaluate the proposed models. All datasets contain facial images categorized into the six target expressions:
@@ -26,21 +20,26 @@ or training pipeline.
 
 
 \begin{table}
-  \begin{tabular} {|c|c|c|c|c|}
+  \centering
+  \resizebox{\columnwidth}{!}{
+  \begin{tabular} {|c|c|c|c|}
     \hline
-   	& \textbf{pixel density} &	\textbf{RGB/Grayscale}	& \textbf{Image Format} & \textbf{Total Images}\\ \hline
-   \textbf{ AffecNet} & 96x96	& RGB	& JPEG  & 22629\\ \hline
-
-    \textbf{CK+} & 48x48	& Grayscale	& PNG & 927 \\ \hline
-    \textbf{FER+} & 112x112	& Grayscale	& PNG & 56269\\ \hline
-    \textbf{RAF-DB} & 100x100	& RGB, Grayscale	& JPEG & 12135\\ \hline
-    \textbf{Total Amount} & & & &
-\textbf{91960} \\ \hline
-    
-    
+   	& \textbf{pixel density} &	\textbf{RGB/Grayscale} & \textbf{Total Images}\\
+    \hline
+    \textbf{AffecNet} & 96x96	& RGB	& 22629\\
+    \hline
+    \textbf{CK+} & 48x48	& Grayscale & 927 \\
+    \hline
+    \textbf{FER+} & 112x112	& Grayscale & 56269\\
+    \hline
+    \textbf{RAF-DB} & 100x100	& RGB, Grayscale & 12135\\
+    \hline
+    \textbf{Total} & & & \textbf{91960}\\
+    \hline    
  \end{tabular}
+ }
  \caption{Characteristics from Datasets}
-\label{Datasets' Characteristics}
+\label{tab:dataset_characteristics}
 \end{table}
 
 
