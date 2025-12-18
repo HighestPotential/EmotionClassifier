@@ -3,16 +3,16 @@
 
 To address the facial emotion recognition (FER) task, our group investigates multiple
 convolutional neural networks (CNNs) that have demonstrated strong performance in image
-classification and facial analysis tasks. CNNs build the base for most of our models. This 
-decision is based on according literature emphasizing the clear performance advantage of 
-CNNs compared to other approaches such as traditional machine learning models 
+classification and facial analysis tasks. CNNs form the basis for most of our models. This 
+decision is based on prior literature emphasizing the clear performance advantage of 
+CNNs compared to other approaches such as traditional machine learning models.
 \cite{Dong_2024}. Each team member focuses on implementing and evaluating selected
 architectures in order to identify the most suitable model for achieving a high 
 classification accuracy while maintaining robust generalization performance.
 
 Maximizing the accuracy of the FER task represents the core goal of our group. Apart 
 from the aforementioned aspects, the actual architecture of our neural network plays 
-a key role in achieving this goal to the best of our ability. In the follwoing section 
+a key role in achieving this goal to the best of our ability. In the following section 
 we want to highlight our decision making process.
 
 \subsection{Criteria for model selection}
@@ -20,17 +20,17 @@ we want to highlight our decision making process.
 The suitability of a model for this project is evaluated based on the following 
 criteria:
 
-Firstly the design should be well documented in the literature to ensure scientifically 
+Firstly, the design should be well documented in the literature to ensure scientifically 
 proven effectiveness. For a model to be taken into closer consideration it should have 
 reported strong results on standard benchmarks.
 
-Secondly the architecture should be able to learn complex facial contexts that contribute 
+Secondly, the architecture should be able to learn complex facial contexts that contribute 
 to the classification of each emotion. The model has to efficiently recognize important parts 
 of the image such as the eyes, the mouth and the eyebrows and correctly prioritize them over 
 different features of the input such as the background.
 
-Finally models that are prone to overfitting are seen as unfavorable for our project. 
-Given the smaller data quantity relative to other classification tasks such as ImageNet
+Finally, models that are prone to overfitting are seen as unfavorable for our project. 
+Given the smaller data quantity relative to large-scale benchmarks such as ImageNet,
 the chosen architecture should be known to generalize well even when trained on a smaller 
 number of images similar to the amount of training samples at our disposal.
 
@@ -42,17 +42,16 @@ number of images similar to the amount of training samples at our disposal.
     \label{fig:accuracies}
 \end{figure}
 
-We took inspiration from the figure above and are eager to try implementing some of the  promising
-networks shown above. The best fitting models for our tasks are the ones that report the highest 
-accuracy while needing proportionally few operations. The Amount of parameters has not been used as 
+We took inspiration from the figure above and selected promising networks for implementation. The best fitting models for our tasks are the ones that report the highest 
+accuracy while needing proportionally few operations. The amount of parameters has not been used as 
 a decision metric since especially more modern designs reach high accuracies while not increasing the 
 parameter count drastically.
 
 \subsection{Excluded model architectures}
 
 Not all types of models were categorized as suitable for the task at hand. Vision Transformers 
-(ViT) are highly data hungry and tyically rely on large-scale pretraining, making them suboptimal
-for training from scratch on limited FER datasets. Furthermore any outdated neural networks that 
+(ViT) are highly data hungry and typically rely on large-scale pretraining, making them suboptimal
+for training from scratch on limited FER datasets. Furthermore, any outdated neural networks that 
 are no longer competitive in terms of accuracy or efficiency were used as baselines for 
 comparison.
 
@@ -62,19 +61,14 @@ We decided to research common training parameters used in scientific papers that
 results. All models are trained from scratch using a consistent training protocol to ensure fair
 comparison.
 
-We decided to use cross entropy loss as our loss function since it's widely used in similar 
-classification tasks. Using stochastic gradient descent (SGD) as our optimizer we are going to 
-train the networks for approximately 30-50 epochs depending on individual model convergence.
-Furthermore we plan on exploring attention mechanisms to improve robustness against facial 
-occlusions.
+We decided to use Class-Balanced Focal Loss as our loss function, which combines class-imbalance-aware reweighting with focal loss, to address class imbalance and emphasize hard samples. Using AdamW as our optimizer, we train the networks for approximately 30–50 epochs, since different architectures and datasets converge at different speeds; in practice, validation performance typically saturates within this range and training beyond that risks overfitting. Furthermore, we plan on exploring attention mechanisms to improve robustness against facial occlusions.
 
-To ensure a consistent baseline fo rmodel evaluation all models are trained and tested on a 
-predefined dataset.
+To ensure a consistent baseline for model evaluation, all models are trained and evaluated on a predefined dataset split. 
 
 \subsection{Model selection strategy}
 
-We are currently in theprocess of deciding on a final neural network design for the entire group.
+We are currently in the process of deciding on a final neural network design for the entire group.
 Each team member is implementing a number of different models based on the architectures that have
-been proven to achieve good results in FER tasks. Architectures of interest include GoogLeNet \cite{DBLP:journals/corr/SzegedyLJSRAEVR14},
+been proven to achieve good results in FER tasks. The final architecture will be selected based on validation performance. The held-out test set is used only once for the final unbiased evaluation. Architectures of interest include GoogLeNet \cite{DBLP:journals/corr/SzegedyLJSRAEVR14},
 different versions of ResNet due to the high accuracy shown in \ref{fig:accuracies} and Poster++ as this design is 
 quite new and has proven to perform well on FER problems \cite{mao2023postersimplerstrongerfacial}.
