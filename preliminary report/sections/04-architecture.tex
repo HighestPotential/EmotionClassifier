@@ -61,7 +61,7 @@ We decided to research common training parameters used in scientific papers that
 results. All models are trained from scratch using a consistent training protocol to ensure fair
 comparison.
 
-We decided to use Class-Balanced Focal Loss as our loss function, which combines class-imbalance-aware reweighting with focal loss, to address class imbalance and emphasize hard samples. Using AdamW as our optimizer, we train the networks for approximately 30–50 epochs, since different architectures and datasets converge at different speeds; in practice, validation performance typically saturates within this range and training beyond that risks overfitting. Furthermore, we plan on exploring attention mechanisms to improve robustness against facial occlusions.
+We decided to use Class-Balanced Focal Loss as our loss function, which combines class-imbalance-aware reweighting with focal loss, to address class imbalance and emphasize hard samples. We train the networks for approximately 30–50 epochs, since different architectures and datasets converge at different speeds; in practice, validation performance typically saturates within this range and training beyond that risks overfitting. We experiment with both AdamW and SGD with momentum, as AdamW often provides stable and fast convergence while SGD with momentum can yield strong generalization. The final optimizer choice is determined based on validation performance. Furthermore, we plan on exploring attention mechanisms to improve robustness against facial occlusions.
 
 To ensure a consistent baseline for model evaluation, all models are trained and evaluated on a predefined dataset split. 
 
