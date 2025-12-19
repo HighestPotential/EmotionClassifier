@@ -1,4 +1,5 @@
-import ImageProcessor
+from image_processor_interface import ImageProcessor
+import numpy as np
 
 class ToRGB(ImageProcessor):
     
