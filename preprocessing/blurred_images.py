@@ -7,12 +7,12 @@ class RemoveBlurredFaces(ImageProcessor):
     """
     A class that removes blurry images from a set of images
 
-    Attributes:
+    Attributes
     -----------
 
     None
 
-    Methods:
+    Methods
     --------
 
     process(self, image: np.ndarray, threshold = 100.0) -> np.ndarray
@@ -43,7 +43,6 @@ class RemoveBlurredFaces(ImageProcessor):
 
         np.ndarray
             A copy of the original image array where the blurry images were removed.
-
         """
 
         cleaned_array = image.copy()
