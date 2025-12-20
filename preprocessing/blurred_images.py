@@ -20,7 +20,7 @@ class RemoveBlurredFaces(ImageProcessor):
         w are the height and width of the image
     """
 
-    def process(self, image: np.ndarray, threshold = 100.0) -> np.ndarray:
+    def process(self, image: np.ndarray, labels: np.ndarray, threshold = 100.0) -> np.ndarray:
         """
         Removes items from a list of images according to the class description
 
@@ -34,6 +34,10 @@ class RemoveBlurredFaces(ImageProcessor):
                 - h: height of each image
                 - w: width of each image
         
+        labels: np.ndarray
+            A numpy array that stores the labels to the images. The expected size is (n) or (n, 1).
+            Both variations produce identical results.
+        
         threshold: float, optional
             The threshold that classifies an image as blurry. If the laplaian variance < threshold the image 
             is considered blurry and removed.
@@ -41,16 +45,21 @@ class RemoveBlurredFaces(ImageProcessor):
         Returns
         --------
 
-        np.ndarray
+        cleaned_images: np.ndarray
             A copy of the original image array where the blurry images were removed.
+
+        cleaned_labels: np.ndarray
+            A copy of the original label array where the blurry image labels were removed
         """
 
-        cleaned_array = image.copy()
-        
-        variances = [cv.Laplacian(sample, cv.CV_64F).var() for sample in cleaned_array]
+        cleaned_images = image.copy()
+        cleaned_labels = labels.copy()
+
+        variances = [cv.Laplacian(sample, cv.CV_64F).var() for sample in cleaned_images]
         variances = np.array(variances)
 
         mask = variances >= threshold
-        cleaned_array = cleaned_array[mask]
+        cleaned_images = cleaned_images[mask]
+        cleaned_labels = cleaned_labels[mask]
 
-        return cleaned_array
+        return cleaned_images, cleaned_labels
