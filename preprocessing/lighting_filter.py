@@ -3,6 +3,13 @@ from image_processor_interface import ImageProcessor
 from skip_image import SkipImage
 
 class LightingFilter(ImageProcessor):
+    
+"""
+Filters out images with extremely bad lighting:
+- too dark / too bright
+- too low contrast (washed out)
+- too many clipped pixels (mostly black/mostly white)
+"""
 
     def __init__(self, low_mean: float = 20.0, high_mean: float = 235.0, min_std: float = 12.0, max_black_frac: float = 0.60, max_white_frac: float = 0.60, black_thresh: int = 5, white_thresh: int = 250):
         self.low_mean = low_mean
@@ -44,5 +51,6 @@ class LightingFilter(ImageProcessor):
             raise SkipImage(f"Too many dark pixels (black_frac={black_frac:.2f})")
         if white_frac > self.max_white_frac:
             raise SkipImage(f"Too many bright pixels (white_frac={white_frac:.2f})")
+
 
         return image
