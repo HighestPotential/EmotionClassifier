@@ -81,20 +81,26 @@ class RemoveDuplicates(ImageProcessor):
         np.ndarray
             A copy of the original image array where the duplicate images were removed.
         """
+
+        if not image.ndim == 3:
+            raise ValueError
+
         n, _, _ = image.shape
+
         hashes = np.zeros(n)
+        mask = np.zeros(n).astype(np.uint8)
+
         cleaned_images = image.copy()
         cleaned_labels = labels.copy()
 
         for i, img in enumerate(image):
             hashes[i] = self._difference_hash(img)
         
-        for i in range(n):
-            hash = hashes[i]
-            differences = image[i:] - hash
-
-            mask = differences > min_distance
-            cleaned_images = cleaned_images[mask]
-            cleaned_labels = cleaned_labels[mask]
+        for i, base in enumerate(hashes):
+            for comp in hashes[i+1:]:
+                mask[i] = abs(base - comp) > min_distance
+        
+        cleaned_images = cleaned_images[mask]
+        cleaned_labels = cleaned_labels[mask]
         
         return cleaned_images, cleaned_labels

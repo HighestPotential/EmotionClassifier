@@ -51,6 +51,9 @@ class RemoveBlurredFaces(ImageProcessor):
         cleaned_labels: np.ndarray
             A copy of the original label array where the blurry image labels were removed
         """
+        
+        if not image.ndim == 3:
+            raise ValueError
 
         cleaned_images = image.copy()
         cleaned_labels = labels.copy()
