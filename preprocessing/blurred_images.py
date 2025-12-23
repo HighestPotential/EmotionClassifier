@@ -1,5 +1,6 @@
 import numpy as np
 import cv2 as cv
+
 from image_processor_interface import ImageProcessor
 
 class RemoveBlurredFaces(ImageProcessor):
