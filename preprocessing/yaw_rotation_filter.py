@@ -83,7 +83,7 @@ def process(self, image: np.ndarray) -> np.ndarray:
 
         # 3. 6DRepNet Prediction
         try:
-            pitch, yaw, roll = self.pose_model.predict(face_crop)
+            _pitch, yaw, _roll = self.pose_model.predict(face_crop)
             
             # Filter based on Yaw (Left/Right rotation)
             if abs(yaw) > self.yaw_threshold:

@@ -6,9 +6,6 @@ import torch
 from tqdm import tqdm
 from sixdrepnet import SixDRepNet
 
-# ---------------------------------------------------------
-#PyTorch-based RetinaFace
-# ---------------------------------------------------------
 from batch_face import RetinaFace
 
 # ---------------------------------------------------------
