@@ -4,6 +4,7 @@ import cv2
 import torch
 from batch_face import RetinaFace
 from image_processor_interface import ImageProcessor
+from skip_image import SkipImage
 
 class FaceOrientationFilter(ImageProcessor):
     def __init__(self, min_confidence: float = 0.4):
@@ -63,7 +64,7 @@ class FaceOrientationFilter(ImageProcessor):
                 - Returns None if no face is detected in any orientation (or score < min_confidence).
         """
         if image is None:
-            return None
+            raise SkipImage("Input image is None")
 
         # 1. Handle Grayscale -> BGR conversion
         # RetinaFace requires 3 channels.
@@ -103,6 +104,6 @@ class FaceOrientationFilter(ImageProcessor):
         # 4. Final Verification
         # If even the best rotation has a low score, it's likely not a face at all.
         if best_score < self.min_confidence:
-            return None
+            return SkipImage(f"No face detected above confidence {self.min_confidence}")
 
         return best_image

@@ -5,6 +5,7 @@ import torch
 from sixdrepnet import SixDRepNet
 from batch_face import RetinaFace
 from image_processor_interface import ImageProcessor
+from skip_image import SkipImage
 
 class FaceRotationFilter(ImageProcessor):
     def __init__(self, yaw_threshold_degrees: float = 45.0):
@@ -54,7 +55,7 @@ def process(self, image: np.ndarray) -> np.ndarray:
                 - The 6DRepNet prediction fails or the Yaw angle > `yaw_threshold`.
         """
         if image is None:
-            return None
+            raise SkipImage("Input image is None")
         
         # RetinaFace expects RGB
         img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -65,7 +66,7 @@ def process(self, image: np.ndarray) -> np.ndarray:
         faces = self.detector(img_rgb, threshold=0.5)
 
         if not faces:
-            return None # REJECTED: No face found
+            raise SkipImage("RetinaFace failed to detect any face")
 
         # 2. Analyze Primary Face (Take the first/largest one)
         # batch_face returns a list of tuples: (box, landmarks, score)
@@ -79,7 +80,7 @@ def process(self, image: np.ndarray) -> np.ndarray:
         face_crop = image[y1:y2, x1:x2]
         
         if face_crop.size == 0:
-            return None # REJECTED: Invalid crop
+            raise SkipImage("Invalid/Empty face crop")
 
         # 3. 6DRepNet Prediction
         try:
@@ -87,10 +88,10 @@ def process(self, image: np.ndarray) -> np.ndarray:
             
             # Filter based on Yaw (Left/Right rotation)
             if abs(yaw) > self.yaw_threshold:
-                return None # REJECTED: Rotation too extreme
+                raise SkipImage(f"Face Yaw ({int(yaw)}°) exceeds threshold ({self.yaw_threshold}°)")
             
             # ACCEPTED: Return the original clean image
             return image
             
-        except Exception:
-            return None # REJECTED: Prediction error
+        except Exception as e:
+            raise SkipImage(f"6DRepNet inference error: {str(e)}")
