@@ -1,16 +1,26 @@
-import ImageProcessor
+import numpy as np
+from image_processor_interface import ImageProcessor
 
 class ToRGB(ImageProcessor):
-    
     def process(self, image: np.ndarray) -> np.ndarray:
-        if image.ndim == 2:  # Grayscale image
-            return np.stack((image,) * 3, axis=-1)
-        elif image.shape[2] == 4:  # RGBA image
-            return image[:, :, :3]
-        elif image.shape[2] == 3:  # Already RGB
-            return image
-        else:
-            raise ValueError("Unsupported image format")
-    
-    def new_function(self):
-        return "ToRGB()"
+        if image is None:
+            raise ValueError("Image is None")
+
+        # HxW grayscale
+        if image.ndim == 2:
+            return np.repeat(image[:, :, None], 3, axis=2)
+
+        # HxWxC
+        if image.ndim == 3:
+            c = image.shape[2]
+
+            if c == 1:  # HxWx1 grayscale
+                return np.repeat(image, 3, axis=2)
+
+            if c == 4:  # RGBA -> RGB
+                return image[:, :, :3]
+
+            if c == 3:  # already RGB
+                return image
+
+        raise ValueError(f"Unsupported image format: shape={image.shape}")
