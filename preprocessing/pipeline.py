@@ -10,6 +10,6 @@ class Pipeline:
         try:
             for step in self.steps:
                 img = step.process(img)
-                return img
+            return img
         except SkipImage:
             return None
