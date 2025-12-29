@@ -7,6 +7,16 @@ from skip_image import SkipImage
 EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
 
 def collect_images(root: Path, max_files: int | None = None) -> list[Path]:
+    """
+    Recursively collects image paths from the directory tree, filtering by extension.
+
+    Args:
+        root (Path): The root directory to start searching from.
+        max_files (int | None): Optional limit on the number of files to collect.
+
+    Returns:
+        list[Path]: A list of Path objects for all found images.
+    """
     paths = []
     for p in root.rglob("*"):
         if p.is_file() and p.suffix.lower() in EXTS:
@@ -65,6 +75,20 @@ def find_dropped(pipe: Pipeline, input_dir: str, max_scan: int = 50000, max_keep
     return dropped
 
 def run_folder(pipe: Pipeline, input_dir: str, output_dir: str, keep_structure: bool = True, max_files: int | None = None, log_every: int = 500):
+    """
+    Reads images from an input folder, processes them through the pipeline, and saves them.
+
+    Args:
+        pipe (Pipeline): The processing pipeline to execute on each image.
+        input_dir (str): Path to the source directory containing images.
+        output_dir (str): Path to the destination directory for processed images.
+        keep_structure (bool): If True, maintains the original subdirectory structure.
+        max_files (int | None): Optional limit on the number of files to process.
+        log_every (int): Frequency of logging progress to the console.
+
+    Returns:
+        None
+    """
     in_root = Path(input_dir)
     out_root = Path(output_dir)
     out_root.mkdir(parents=True, exist_ok=True)
