@@ -12,7 +12,7 @@ class FaceOrientationFilter(ImageProcessor):
         
         Args:
             min_confidence (float): The minimum score required for the 'best' rotation 
-                                    to be accepted as a valid face. Defaults to 0.5.
+                                    to be accepted as a valid face. Defaults to 0.4.
         """
         self.min_confidence = min_confidence
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
