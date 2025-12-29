@@ -103,6 +103,6 @@ class FaceOrientationFilter(ImageProcessor):
         # 4. Final Verification
         # If even the best rotation has a low score, it's likely not a face at all.
         if best_score < self.min_confidence:
-            return SkipImage(f"No face detected above confidence {self.min_confidence}")
+            raise SkipImage(f"No face detected above confidence {self.min_confidence}")
 
         return best_image
