@@ -1,6 +1,7 @@
 from pathlib import Path
 import cv2
 import numpy as np
+from tqdm import tqdm
 from pipeline import Pipeline
 from skip_image import SkipImage  
 
@@ -9,6 +10,7 @@ EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
 def collect_images(root: Path, max_files: int | None = None) -> list[Path]:
     """
     Recursively collects image paths from the directory tree, filtering by extension.
+    Skips any files in the FER2013 folder.
 
     Args:
         root (Path): The root directory to start searching from.
@@ -19,6 +21,9 @@ def collect_images(root: Path, max_files: int | None = None) -> list[Path]:
     """
     paths = []
     for p in root.rglob("*"):
+        # Skip anything in FER2013 folder
+        if "FER2013" in p.parts:
+            continue
         if p.is_file() and p.suffix.lower() in EXTS:
             paths.append(p)
             if max_files is not None and len(paths) >= max_files:
@@ -96,9 +101,9 @@ def run_folder(pipe: Pipeline, input_dir: str, output_dir: str, keep_structure: 
     paths = collect_images(in_root, max_files=max_files)
 
     total = saved = filtered = failed = 0
-    for idx, p in enumerate(paths, start=1):
+    for idx, p in enumerate(tqdm(paths, desc="Processing images", unit="img"), start=1):
         if log_every and idx % log_every == 0:
-            print(f"scanned {idx}/{len(paths)} | saved {saved} | filtered {filtered} | failed {failed}")
+            tqdm.write(f"scanned {idx}/{len(paths)} | saved {saved} | filtered {filtered} | failed {failed}")
 
         img = cv2.imread(str(p), cv2.IMREAD_UNCHANGED)
         if img is None:
