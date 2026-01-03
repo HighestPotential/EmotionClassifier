@@ -1,6 +1,6 @@
 import numpy as np
 import cv2 as cv
-
+from skip_image import SkipImage
 from image_processor_interface import ImageProcessor
 
 class RemoveBlurredFaces(ImageProcessor):
@@ -21,7 +21,7 @@ class RemoveBlurredFaces(ImageProcessor):
         w are the height and width of the image
     """
 
-    def process(self, image: np.ndarray, labels: np.ndarray, threshold = 100.0) -> np.ndarray:
+    def process(self, image: np.ndarray, threshold = 100.0) -> np.ndarray: # chaged bacause it expects multiple images
         """
         Removes items from a list of images according to the class description
 
@@ -53,17 +53,19 @@ class RemoveBlurredFaces(ImageProcessor):
             A copy of the original label array where the blurry image labels were removed
         """
         
-        if not image.ndim == 3:
-            raise ValueError
+        if image is None:
+            raise SkipImage("Image is None")
 
-        cleaned_images = image.copy()
-        cleaned_labels = labels.copy()
+        # Convert to grayscale for Laplacian
+        if len(image.shape) == 3:
+            gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+        else:
+            gray = image
 
-        variances = [cv.Laplacian(sample, cv.CV_64F).var() for sample in cleaned_images]
-        variances = np.array(variances)
+        # Calculate Laplacian variance
+        variance = cv.Laplacian(gray, cv.CV_64F).var()
 
-        mask = variances >= threshold
-        cleaned_images = cleaned_images[mask]
-        cleaned_labels = cleaned_labels[mask]
+        if variance < threshold:
+            raise SkipImage(f"Image is blurry (variance={variance:.2f} < {threshold})")
 
-        return cleaned_images, cleaned_labels
+        return image
