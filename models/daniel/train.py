@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from tqdm import tqdm
 
 from FERDataset import FERDataset
-from CustomModels import VGGNet
+import CustomModels as Models
 
 import torch
 import torch.nn as nn
@@ -39,6 +39,7 @@ class CNNContext:
     threshold: float
     epochs: int
     patience: int
+    saveFile: str
 
 class NumberedList:
     def __init__(self, length):
@@ -116,7 +117,7 @@ def trainLoop(ctx: CNNContext,
 
         if epoch_loss < best_loss:
             best_loss = epoch_loss
-            torch.save(ctx.model.state_dict(), "MobileNet_trained.pth")
+            torch.save(ctx.model.state_dict(), ctx.saveFile)
         
         if sampleList.get() < ctx.threshold:
             counter += 1
@@ -130,8 +131,8 @@ def trainLoop(ctx: CNNContext,
         print(f"Validation Loss: {epoch_loss}")
         print(f"Validation Accuracy: {epoch_acc}\n")
 
-def testAccuracy(ctx: CNNContext, test_loader: DataLoader, parameterPath: str) -> float:
-    ctx.model.load_state_dict(torch.load(parameterPath, weights_only=False, map_location=ctx.device))
+def testAccuracy(ctx: CNNContext, test_loader: DataLoader) -> float:
+    ctx.model.load_state_dict(torch.load(ctx.saveFile, weights_only=False, map_location=ctx.device))
 
     ctx.model.eval()
     with torch.no_grad():
@@ -159,8 +160,7 @@ if __name__ == "__main__":
     evalLoader = DataLoader(evalSet, batch_size=32, shuffle=False)
     testLoader = DataLoader(testSet, batch_size=32, shuffle=False)
 
-    #model = VGGNet()
-    model = VGGNet()
+    model = Models.BuildGoogLeNet(numClasses=6)
     loss_fn = nn.CrossEntropyLoss()
     optim_SGD = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     optim_Adam = optim.Adam(model.parameters(), lr=0.001)
@@ -176,7 +176,8 @@ if __name__ == "__main__":
                                       device=device,
                                       threshold=0.001,
                                       epochs=MAX_EPOCHS,
-                                      patience=10)
+                                      patience=10,#
+                                      saveFile="./GoogLeNet_trained.pth")
     
     accuraciesOverTime: NumberedList = NumberedList(5)
 
@@ -185,7 +186,7 @@ if __name__ == "__main__":
     stop = time.time()
     duration = (stop - start) / 60 # duration in Minutes
     
-    modelAccuracy = testAccuracy(ctx=trainCtx, test_loader=testLoader, parameterPath="./VGG_trained.pth") 
+    modelAccuracy = testAccuracy(ctx=trainCtx, test_loader=testLoader) 
     
     print(f"Model Accuracy: {modelAccuracy:.3f}%")
     print(f"Training took {duration:.2f} Minutes")
