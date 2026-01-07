@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torchvision.models.googlenet import GoogLeNet
+from torchvision.models import GoogLeNet
 
 class VGGNet (nn.Module):
 
@@ -79,4 +79,4 @@ class VGGNet (nn.Module):
         return x
 
 def BuildGoogLeNet(numClasses: int = 6):
-    return GoogLeNet(num_classes=numClasses, aux_logits=False)
+    return GoogLeNet(num_classes=6, aux_logits=False, init_weights=False)

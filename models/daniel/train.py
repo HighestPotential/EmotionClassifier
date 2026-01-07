@@ -165,7 +165,7 @@ if __name__ == "__main__":
     optim_SGD = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     optim_Adam = optim.Adam(model.parameters(), lr=0.001)
 
-    device = torch.device("gpu" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     #LOGIC
     model.to(device)
