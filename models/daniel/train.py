@@ -1,11 +1,12 @@
 # IMPORTS
 import os
+import time
 from enum import Enum
 from dataclasses import dataclass
 from tqdm import tqdm
 
 from FERDataset import FERDataset
-from CustomModels import DeepEmotion
+import CustomModels as Models
 
 import torch
 import torch.nn as nn
@@ -16,7 +17,7 @@ import torchvision.transforms as transforms
 
 #CONSTANTS
 DATASETS_BASE: str = os.path.join("..", "..", "ready_to_use_datasets")
-MAX_EPOCHS = 100
+MAX_EPOCHS = 500
 
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -34,10 +35,11 @@ class CNNContext:
     model: nn.Module
     criterion: nn.CrossEntropyLoss
     optimizer: optim.Optimizer
-    gpu: bool
+    device: torch.device
     threshold: float
     epochs: int
     patience: int
+    saveFile: str
 
 class NumberedList:
     def __init__(self, length):
@@ -69,28 +71,26 @@ class NumberedList:
 def trainLoop(ctx: CNNContext,
               train_loader: DataLoader,
               val_loader: DataLoader,
-              lossList :NumberedList
-              ):
+              sampleList :NumberedList
+              ) -> None:
     
     counter = 0
-    best_loss = float('inf')
+    best_loss = float('inf') # float rappresentation of infinity
     
     for epoch in range(ctx.epochs):
 
         print(f"TRAINING EPOCH {epoch}\n")
 
         for image, label in tqdm(train_loader, desc="Batch", leave=False):
-            if ctx.gpu:
-                image = image.cuda()
-                label = label.cuda()
+            image = image.to(ctx.device)
+            label = label.to(ctx.device)
             
             ctx.model.train()
             pred = ctx.model(image)
 
             loss = ctx.criterion(pred, label)
             
-            if ctx.gpu:
-                loss = loss.cuda()
+            loss = loss.to(ctx.device)
 
             ctx.optimizer.zero_grad()
             loss.backward()
@@ -103,43 +103,41 @@ def trainLoop(ctx: CNNContext,
             correct = 0
 
             for X, y in val_loader:
-                if ctx.gpu:
-                    X = X.cuda()
-                    y = y.cuda()
+                X = X.to(ctx.device)
+                y = y.to(ctx.device)
 
                 pred = ctx.model(X)
                 loss = ctx.criterion(pred, y)
+                runningLoss += float(loss.item())
+
                 correct += (pred.argmax(1) == y).sum().item()
 
-                runningLoss += loss.item()
-
-            epoch_loss = runningLoss / len(val_loader.dataset)
+            epoch_loss = runningLoss / len(val_loader)
             epoch_acc = 100 * correct / len(val_loader.dataset)
 
         if epoch_loss < best_loss:
             best_loss = epoch_loss
-            torch.save(ctx.model.state_dict(), "DeepEmotion_trained.pth")
+            torch.save(ctx.model.state_dict(), ctx.saveFile)
         
-        if lossList.get() + ctx.threshold < epoch_loss:
+        if sampleList.get() < ctx.threshold:
             counter += 1
         
-        lossList.append(epoch_loss)
+        sampleList.append(epoch_loss)
 
-        if counter > ctx.patience:
+        if ctx.patience < counter:
+            print("Stopping training prematurely due to validation convergence!")
             break   # exit prematurely
 
         print(f"Validation Loss: {epoch_loss}")
         print(f"Validation Accuracy: {epoch_acc}\n")
 
-    return counter
-
-def testAccuracy(ctx: CNNContext, test_loader: DataLoader, parameterPath: str):
-    ctx.model.load_state_dict(torch.load(parameterPath, weights_only=False))
+def testAccuracy(ctx: CNNContext, test_loader: DataLoader) -> float:
+    ctx.model.load_state_dict(torch.load(ctx.saveFile, weights_only=False, map_location=ctx.device))
 
     ctx.model.eval()
     with torch.no_grad():
         correct = 0
-        for image, label in test_loader:
+        for image, label in tqdm(test_loader, desc="Test progress", leave=False):
             if ctx.gpu:
                 image = image.cuda()
                 label = label.cuda()
@@ -147,7 +145,7 @@ def testAccuracy(ctx: CNNContext, test_loader: DataLoader, parameterPath: str):
             out = model(image)
             correct += (out.argmax(1) == label).sum().item()
         
-    accuracy = correct / len(test_loader)
+    accuracy = 100 * correct / len(test_loader.dataset)
     
     return accuracy
 
@@ -162,26 +160,33 @@ if __name__ == "__main__":
     evalLoader = DataLoader(evalSet, batch_size=32, shuffle=False)
     testLoader = DataLoader(testSet, batch_size=32, shuffle=False)
 
-    model = DeepEmotion()
+    model = Models.BuildGoogLeNet(numClasses=6)
     loss_fn = nn.CrossEntropyLoss()
     optim_SGD = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     optim_Adam = optim.Adam(model.parameters(), lr=0.001)
 
-    use_gpu = torch.cuda.is_available()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     #LOGIC
-    if use_gpu:
-        model.cuda()
+    model.to(device)
 
     trainCtx: CNNContext = CNNContext(model=model,
                                       criterion=loss_fn,
                                       optimizer=optim_Adam,
-                                      gpu=use_gpu,
+                                      device=device,
                                       threshold=0.001,
                                       epochs=MAX_EPOCHS,
-                                      patience=10)
+                                      patience=10,#
+                                      saveFile="./GoogLeNet_trained.pth")
     
     accuraciesOverTime: NumberedList = NumberedList(5)
-    over = trainLoop(ctx=trainCtx, train_loader=trainLoader, val_loader=evalLoader, lossList=accuraciesOverTime)
-    acc = testAccuracy(ctx=trainCtx, test_loader=testLoader, parameterPath="./DeepEmotion_trained.pth")
-    print(f"Model Accuracy: {acc:.3f}%")
+
+    start = time.time()
+    trainLoop(ctx=trainCtx, train_loader=trainLoader, val_loader=evalLoader, sampleList=accuraciesOverTime)
+    stop = time.time()
+    duration = (stop - start) / 60 # duration in Minutes
+    
+    modelAccuracy = testAccuracy(ctx=trainCtx, test_loader=testLoader) 
+    
+    print(f"Model Accuracy: {modelAccuracy:.3f}%")
+    print(f"Training took {duration:.2f} Minutes")
