@@ -160,7 +160,8 @@ if __name__ == "__main__":
     evalLoader = DataLoader(evalSet, batch_size=32, shuffle=False)
     testLoader = DataLoader(testSet, batch_size=32, shuffle=False)
 
-    model = Models.BuildGoogLeNet(numClasses=6)
+    #model = Models.BuildGoogLeNet(numClasses=6)
+    model = Models.EmoNeXt_Tiny()
     loss_fn = nn.CrossEntropyLoss()
     optim_SGD = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     optim_Adam = optim.Adam(model.parameters(), lr=0.001)
@@ -172,14 +173,14 @@ if __name__ == "__main__":
 
     trainCtx: CNNContext = CNNContext(model=model,
                                       criterion=loss_fn,
-                                      optimizer=optim_Adam,
+                                      optimizer=optim_SGD,
                                       device=device,
-                                      threshold=0.001,
+                                      threshold=0.01,
                                       epochs=MAX_EPOCHS,
-                                      patience=10,#
-                                      saveFile="./GoogLeNet_trained.pth")
+                                      patience=10,
+                                      saveFile="./EmoNeXt_trained.pth")
     
-    accuraciesOverTime: NumberedList = NumberedList(5)
+    accuraciesOverTime: NumberedList = NumberedList(10)
 
     start = time.time()
     trainLoop(ctx=trainCtx, train_loader=trainLoader, val_loader=evalLoader, sampleList=accuraciesOverTime)
