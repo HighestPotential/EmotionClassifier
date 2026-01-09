@@ -156,9 +156,9 @@ if __name__ == "__main__":
     evalSet = FERDataset(DATASETS_BASE, DataMode.eval, transform)
     testSet = FERDataset(DATASETS_BASE, DataMode.test, transform)
 
-    trainLoader = DataLoader(trainSet, batch_size=32, shuffle=True)
-    evalLoader = DataLoader(evalSet, batch_size=32, shuffle=False)
-    testLoader = DataLoader(testSet, batch_size=32, shuffle=False)
+    trainLoader = DataLoader(trainSet, batch_size=64, shuffle=True)
+    evalLoader = DataLoader(evalSet, batch_size=64, shuffle=False)
+    testLoader = DataLoader(testSet, batch_size=64, shuffle=False)
 
     #model = Models.BuildGoogLeNet(numClasses=6)    ACCURACY: 80%
     #model = Models.EmoNeXt_Tiny()                  ACCURACY: 71%
