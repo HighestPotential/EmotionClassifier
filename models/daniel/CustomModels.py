@@ -236,4 +236,96 @@ class EmoNeXt_Tiny(nn.Module):
         x = self.fc(x)
 
         return x
+    
+class EmoNeXt_Variable(nn.Module):
+    def __init__(self, channels: list[int], blocks: list[int]):
+        super(EmoNeXt_Variable, self).__init__()
 
+        # Localization network for stn
+        self.localization = nn.Sequential(
+            nn.Conv2d(3, 8, kernel_size=7),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.ReLU(True),
+            nn.Conv2d(8, 10, kernel_size=5),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.ReLU(True)
+        )
+
+        self.loc_fc = nn.Sequential(
+            nn.Linear(12 * 12 * 10, 32),
+            nn.ReLU(True),
+            nn.Linear(32, 3 * 2)
+        )
+
+        self.loc_fc[2].weight.data.zero_()
+        self.loc_fc[2].bias.data.copy_(torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float))
+
+                # Normal Convolutional Layers
+        self.patch1 = nn.Conv2d(3, channels[0], kernel_size=4, stride=4) # (64, 64, 3) -> (16, 16, 96)
+        self.norm1 = nn.LayerNorm(channels[0])
+
+        self.conv1 = ConvNeXt_Block(channels[0], blocks[0]) # (16, 16, 96) -> (16, 16, 96)
+        
+        self.patch2 = nn.Conv2d(channels[0], channels[1], kernel_size=2, stride=2) # (16, 16, 96) -> (8, 8, 192)
+        self.se1 = SE_Block(channels[1])
+
+        self.conv2 = ConvNeXt_Block(channels[1], blocks[1])
+
+        self.patch3 = nn.Conv2d(channels[1], channels[2], kernel_size=2, stride=2) # (8, 8, 192) -> (4, 4, 384)
+        self.se2 = SE_Block(channels[2])
+
+        self.conv3 = ConvNeXt_Block(channels[2], blocks[2])
+
+        self.patch4 = nn.Conv2d(channels[2], channels[3], kernel_size=2, stride=2) # (4, 4, 384) -> (2, 2, 768)
+        self.se3 = SE_Block(channels[3])
+
+        self.conv4 = ConvNeXt_Block(channels[3], blocks[3])
+
+        self.avg = nn.AvgPool2d(kernel_size=2) # (2, 2, 768) -> (1, 1, 768)
+        self.norm2 = nn.LayerNorm(channels[3])
+
+        self.fc = nn.Linear(channels[3], 6)
+
+
+    def stn(self, x: torch.Tensor):
+        B, _, _, _ = x.size()
+
+        xs = self.localization(x)
+        xs = xs.view(B, -1)
+        theta = self.loc_fc(xs)
+        theta = theta.view(-1, 2, 3)
+
+        grid = F.affine_grid(theta, x.size(), align_corners=False)
+        x = F.grid_sample(x, grid, align_corners=False)
+
+        return x
+    
+    def forward(self, x: torch.Tensor):
+        x = self.stn(x)
+
+        x = self.patch1(x)
+        x = x.permute(0, 2, 3, 1)
+        x = self.norm1(x)
+        x = x.permute(0, 3, 1, 2)
+
+        x = self.conv1(x)
+        x = self.patch2(x)
+        x = self.se1(x)
+
+        x = self.conv2(x)
+        x = self.patch3(x)
+        x = self.se2(x)
+
+        x = self.conv3(x)
+        x = self.patch4(x)
+        x = self.se3(x)
+
+        x = self.conv4(x)
+
+        x = self.avg(x)
+        x = torch.squeeze(x)
+
+        x = self.norm2(x)
+        x = self.fc(x)
+
+        return x
