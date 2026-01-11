@@ -4,6 +4,9 @@ import random
 from pathlib import Path
 from tqdm import tqdm
 
+from LoadAllData import ImageLoader
+from image_duplicates import RemoveDuplicates
+
 # Allowed labels (lowercase for case-insensitive matching)
 ALLOWED_LABELS = {
     "happiness",
