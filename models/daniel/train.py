@@ -1,6 +1,7 @@
 # IMPORTS
 import os
 import time
+import argparse
 from enum import Enum
 from dataclasses import dataclass
 from tqdm import tqdm
@@ -35,7 +36,9 @@ class CNNContext:
     model: nn.Module
     criterion: nn.CrossEntropyLoss
     optimizer: optim.Optimizer
+    scaler: torch.amp.GradScaler
     device: torch.device
+    amp: bool
     threshold: float
     epochs: int
     patience: int
@@ -86,15 +89,17 @@ def trainLoop(ctx: CNNContext,
             label = label.to(ctx.device)
             
             ctx.model.train()
-            pred = ctx.model(image)
+            with torch.autocast(device_type=ctx.device, dtype=torch.float16, enabled=ctx.amp):
+                pred = ctx.model(image)
+                loss = ctx.criterion(pred, label)
 
-            loss = ctx.criterion(pred, label)
-            
             loss = loss.to(ctx.device)
 
-            ctx.optimizer.zero_grad()
-            loss.backward()
-            ctx.optimizer.step()
+            ctx.scaler.scale(loss).backward()
+            ctx.scaler.step(ctx.optimizer)
+            ctx.scaler.update()
+
+            ctx.optimizer.zero_grad(set_to_none=True)
 
 
         ctx.model.eval()
@@ -106,12 +111,13 @@ def trainLoop(ctx: CNNContext,
                 X = X.to(ctx.device)
                 y = y.to(ctx.device)
 
-                pred = ctx.model(X)
-                loss = ctx.criterion(pred, y)
+                with torch.autocast(device_type=ctx.device, dtype=torch.float16, enabled=ctx.amp):
+                    pred = ctx.model(X)
+                    loss = ctx.criterion(pred, y)
+
                 runningLoss += float(loss.item())
-
                 correct += (pred.argmax(1) == y).sum().item()
-
+            
             epoch_loss = runningLoss / len(val_loader)
             epoch_acc = 100 * correct / len(val_loader.dataset)
 
@@ -119,11 +125,10 @@ def trainLoop(ctx: CNNContext,
             best_loss = epoch_loss
             torch.save(ctx.model.state_dict(), ctx.saveFile)
         
-        if sampleList.get() < ctx.threshold:
+        sampleList.append(epoch_loss)
+        if sampleList.difference() < ctx.threshold:
             counter += 1
         
-        sampleList.append(epoch_loss)
-
         if ctx.patience < counter:
             print("Stopping training prematurely due to validation convergence!")
             break   # exit prematurely
@@ -151,14 +156,31 @@ def testAccuracy(ctx: CNNContext, test_loader: DataLoader) -> float:
 
 if __name__ == "__main__":
 
+    BATCH_SIZE = 32
+    useAmp = False
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-arch", desc="EmoNeXt Architecture")
+    parser.add_argument("-bs", desc="BatchSize for dataloaders")
+    parser.add_argument("-amp", desc="Enable amp")
+
+    args = parser.parse_args()
+    VersionToTrain = args.arch
+
+    if args.bs:
+        BATCH_SIZE = int(args.bs)
+
+    if args.amp:
+        useAmp = True
+    
     # INSTANCES
     trainSet = FERDataset(DATASETS_BASE, DataMode.train, transform)
     evalSet = FERDataset(DATASETS_BASE, DataMode.eval, transform)
     testSet = FERDataset(DATASETS_BASE, DataMode.test, transform)
 
-    trainLoader = DataLoader(trainSet, batch_size=32, shuffle=True)
-    evalLoader = DataLoader(evalSet, batch_size=32, shuffle=False)
-    testLoader = DataLoader(testSet, batch_size=32, shuffle=False)
+    trainLoader = DataLoader(trainSet, batch_size=BATCH_SIZE, shuffle=True)
+    evalLoader = DataLoader(evalSet, batch_size=BATCH_SIZE, shuffle=False)
+    testLoader = DataLoader(testSet, batch_size=BATCH_SIZE, shuffle=False)
 
     #model = Models.BuildGoogLeNet(numClasses=6)    ACCURACY: 80%
     #model = Models.EmoNeXt_Tiny()                  ACCURACY: 71%
@@ -186,18 +208,19 @@ if __name__ == "__main__":
         ],
     }
 
-    VersionToTrain = input("Enter Model Architecture (Tiny, Small, Base, Large, XLarge): ")
     if not VersionToTrain in Versions.keys():
         raise ValueError("Invalid input")
 
-    Arch = Versions[VersionToTrain]
+    arch = Versions[VersionToTrain]
 
-    model = Models.EmoNeXt_Variable(channels=Arch[0], blocks=Arch[1])
+    model = Models.EmoNeXt_Variable(channels=arch[0], blocks=arch[1])
     loss_fn = nn.CrossEntropyLoss()
     optim_SGD = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     optim_Adam = optim.Adam(model.parameters(), lr=0.001)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    scaler_Grad = torch.amp.GradScaler(device=device, enabled=useAmp)
 
     #LOGIC
     model.to(device)
@@ -205,7 +228,9 @@ if __name__ == "__main__":
     trainCtx: CNNContext = CNNContext(model=model,
                                       criterion=loss_fn,
                                       optimizer=optim_SGD,
+                                      scaler=scaler_Grad,
                                       device=device,
+                                      amp=useAmp,
                                       threshold=1,        # Unit: %
                                       epochs=MAX_EPOCHS,
                                       patience=10,
