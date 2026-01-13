@@ -1,11 +1,19 @@
+# |===================================================================================================|
+# |Usage:                                                                                             |
+# |===================================================================================================|
+# |python3 main.py [in_dir] [out_file]                                                                |
+# |                                                                                                   |
+# |in_dir is the directory where all the images to evaluate are located                               |
+# |out_file is the final csv file where filepaths and respective probabilites for ech class are stored|
+# |===================================================================================================|
+
+
 import os
 import argparse
-from pathlib import Path
 import csv
 
 from PIL import Image
 import numpy as np
-import pandas as pd
 
 import torch
 import torch.nn as nn
@@ -22,16 +30,8 @@ def loadImages(paths: list[str])-> np.ndarray:
     
     return images
 
-class FolderImages:
-    def __init__(self, folder: str, transform):
-        self.folder = Path(folder)
-        self.transoform = transform
-
-        self.paths = [p for p in self.folder.rglob("*") if p.is_file()]
-
-
 def main(input: str, output: str) -> None:
-    output_headers = ["filepath", "anger", "disgust", "fear", "happiness", "sadness", "surprise"]
+    output_headers = ["Filepath", "Anger", "Disgust", "Fear", "Happiness", "Sadness", "Surprise"]
 
     model = ResNet18SE()
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -82,6 +82,3 @@ if __name__ == "__main__":
     output = args.out_file
 
     main(dataDir, output)
-
-    df = pd.read_csv(output)
-    print(df)
