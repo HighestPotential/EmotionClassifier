@@ -1,7 +1,4 @@
 \section{Explainable AI}
 \label{sec:explainable_ai}
 
-In order to portray the model’s regions of interest in the image we plan 
-on using GradCAM, which is a common method used for visualizing and 
-interpreting networks by highlighting the image regions that contribute most 
-strongly to a model’s prediction.
+We use GradCAM \cite{DBLP:journals/corr/SelvarajuDVCPB16} because it produces class-specific heatmaps that are visually interpretable for facial expressions and works with our CNN models without requiring architectural modifications. We do not rely on basic saliency maps since they are often noisy and difficult to interpret, and we avoid occlusion based approaches because they are computationally expensive. Standard CAM is also less suitable as it requires specific architectural constraints, whereas GradCAM remains applicable across different backbones.

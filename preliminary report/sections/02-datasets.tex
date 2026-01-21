@@ -18,9 +18,28 @@ All images have to be resized to 64×64 pixels and grayscaled to facilitate stru
 The data includes both grayscale and RGB images. Image formats vary between JPEG and PNG, which does not affect the preprocessing
 or training pipeline.
 
-Regarding dataset characteristics, the selected subset of AffectNet contains 27,755 RGB images with a resolution of 96×96 pixels
-in JPEG format. The CK+ dataset consists of 927 grayscale images with a resolution of 48×48 pixels in PNG
-format. FER+ includes 69,263 grayscale images at 112×112 pixels, also in PNG format. Finally, RAF-DB comprises 15,339 images,
-both grayscale and RGB, with a resolution of 100×100 pixels in JPEG format.
+
+\begin{table}
+  \centering
+  \resizebox{\columnwidth}{!}{
+  \begin{tabular} {|c|c|c|c|}
+    \hline
+   	& \textbf{pixel density} &	\textbf{RGB/Grayscale} & \textbf{Total Images}\\
+    \hline
+    \textbf{AffecNet} & 96x96	& RGB	& 22629\\
+    \hline
+    \textbf{CK+} & 48x48	& Grayscale & 927 \\
+    \hline
+    \textbf{FER+} & 112x112	& Grayscale & 56269\\
+    \hline
+    \textbf{RAF-DB} & 100x100	& RGB, Grayscale & 12135\\
+    \hline
+    \textbf{Total} & & & \textbf{91960}\\
+    \hline    
+ \end{tabular}
+ }
+ \caption{Characteristics from Datasets}
+\label{tab:dataset_characteristics}
+\end{table}
 
 
