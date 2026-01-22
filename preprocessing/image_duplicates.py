@@ -57,7 +57,11 @@ class RemoveDuplicates(ImageProcessor):
         hash = sum([2**i for (i, v) in enumerate(differences) if v])
         return hash
 
+<<<<<<< HEAD
     def process(self, image: np.ndarray, min_distance: int = 10) -> np.ndarray:
+=======
+    def process(self, image: np.ndarray, labels: np.ndarray,  min_distance: int = 10) -> tuple[np.ndarray, np.ndarray]:
+>>>>>>> main
         """
         Removes items from a list of images according to the class description
 
@@ -91,6 +95,11 @@ class RemoveDuplicates(ImageProcessor):
         hashes = np.zeros(n)
         mask = np.ones(n, dtype=bool)
 
+<<<<<<< HEAD
+=======
+        cleaned_images = image.copy()
+        cleaned_labels = labels.copy()
+>>>>>>> main
 
         for i, img in enumerate(image):
             hashes[i] = self._difference_hash(img)
@@ -107,5 +116,14 @@ class RemoveDuplicates(ImageProcessor):
 
             diff = abs(h - hashes[idx:])
             mask[idx:] &= diff > min_distance
+<<<<<<< HEAD
         
         return mask
+=======
+
+        cleaned_images = cleaned_images[mask]
+        cleaned_labels = cleaned_labels[mask]
+
+        
+        return cleaned_images, cleaned_labels
+>>>>>>> main
