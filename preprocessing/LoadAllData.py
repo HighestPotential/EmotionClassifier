@@ -3,7 +3,7 @@ import os
 import numpy as np
 from PIL import Image
 
-from image_duplicates import RemoveDuplicates
+from image_duplicates_old import RemoveDuplicates
 
 class ImageLoader:
     def __init__(self, opRoot: str):
