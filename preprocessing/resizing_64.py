@@ -39,7 +39,7 @@ class ResizingTo64(ImageProcessor):
 =======
 
 
-class resizing_to_64(ImageProcessor):
+class ResizingTo64(ImageProcessor):
     """
     A class that resizes images to 64x64 pixels from a set of images. 
     For smaller images a cubic interpolation method has to be used.
@@ -77,13 +77,15 @@ class resizing_to_64(ImageProcessor):
 
         :rtype: ndarray
         """
-
-        resized_image = image.copy()
-
         if image is None:
-                raise SkipImage("Input image is None")
+            raise SkipImage("Input image is None")
         
-        elif resized_image.size < 64:
+        if image.size == 0:
+            raise SkipImage("Input image is Empty")
+        
+        resized_image = image.copy()
+        
+        if resized_image.size < 64:
             return cv2.resize(resized_image, (64,64), interpolation=cv2.INTER_CUBIC) 
         else:    
             return cv2.resize(resized_image, (64,64))
