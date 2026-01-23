@@ -4,6 +4,14 @@ from PIL import Image
 
 class FindDuplicates:
 
+    def __init__(self, hash_function):
+        if hash_function == "dhash":
+            self.hashF = self._difference_hash
+        elif hash_function == "phash":
+            self.hashF = self._pHash
+        else:
+            raise ValueError
+
     def _difference_hash(self, image: np.ndarray, hashsize: int = 8) -> int:
         """
         Removes items from a list of images according to the class description
@@ -35,6 +43,27 @@ class FindDuplicates:
 
         hash = sum([2**i for (i, v) in enumerate(differences) if v])
         return hash
+    
+    def _pHash(self, image: np.ndarray, hashsize: int = 8):
+        N = 32
+        dctMatrix = np.zeros((N, N))
+        resizedImg = cv.resize(image, (N, N))
+
+        for i in range(N):
+            for j in range(N):
+                frac = (2 * i + 1) * j * np.pi
+                dctMatrix[i, j] = np.sqrt(2 / N) * np.cos(frac)
+
+        transformedImage = dctMatrix @ resizedImg @ dctMatrix.T
+        hashData = transformedImage[:hashsize, :hashsize]
+
+        median = np.median(hashData)
+        hashBits = hashData.flatten() > median
+
+        hash = sum([2**i for (i, b) in enumerate(hashBits) if b])
+        return hash
+
+
 
     def _load_images(self, strBatch: list[str]) -> np.ndarray:
         images = []
@@ -71,6 +100,7 @@ class FindDuplicates:
         duplicates: list[str]
             A list containing the paths of the filtered images. 
         """
+
         bucketMap: dict[int, list[tuple[int, str]]] = {}
         
         numImages = len(images)
@@ -79,7 +109,7 @@ class FindDuplicates:
         for i in range(numPasses):
             strBatch = images[i*batch_size: (i+1)*batch_size]
             imgBatch = self._load_images(strBatch=strBatch)
-            differences = list(map(self._difference_hash, imgBatch))
+            differences = list(map(self.hashF, imgBatch))
 
             entries = list(zip(differences, strBatch))
             

@@ -39,7 +39,7 @@ class ImageLoader:
 
 if __name__ == "__main__":
     imageRoot = "../testData"
-    handler = FindDuplicates()
+    handler = FindDuplicates("dHash")
 
     images = ImageLoader(os.path.abspath(imageRoot)).get_images()
     duplicates = handler.find_duplicates(images)
