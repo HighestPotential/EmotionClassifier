@@ -38,11 +38,30 @@ class ImageLoader:
         return os.path.isdir(path)
 
 if __name__ == "__main__":
-    imageRoot = "../testData"
-    handler = FindDuplicates("dHash")
+    imageRoot = "/home/daniel/Pictures/testData"
+
+    dHandler = FindDuplicates("dHash")
+    pHandler = FindDuplicates("pHash")
 
     images = ImageLoader(os.path.abspath(imageRoot)).get_images()
-    duplicates = handler.find_duplicates(images)
+    dDuplicates = dHandler.find_duplicates(images, min_distance=5)
+    pDuplicates = pHandler.find_duplicates(images, min_distance=5)
     
+    print("processing FERPlus\n====")
     print(f"Total images: {len(images)}")
-    print(f"Duplicates found: {len(duplicates)}")
+    print(f"Duplicates found (dHash): {len(dDuplicates)}")
+    print(f"Duplicates found (pHash): {len(pDuplicates)}")
+    print("--------------------------------------")
+
+    imageRoot = "/home/daniel/Pictures/ready_to_use_datasets"
+
+    images = ImageLoader(os.path.abspath(imageRoot)).get_images()
+    dDuplicates = dHandler.find_duplicates(images, min_distance=5)
+    pDuplicates = pHandler.find_duplicates(images, min_distance=5)
+
+
+    print("processing ready_to_use_datasets\n====")
+    print(f"Total images: {len(images)}")
+    print(f"Duplicates found (dHash): {len(dDuplicates)}")
+    print(f"Duplicates found (pHash): {len(pDuplicates)}")
+    print("--------------------------------------")
