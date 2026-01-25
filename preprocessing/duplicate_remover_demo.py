@@ -1,4 +1,5 @@
 import os
+import shutil
 from find_duplicates import FindDuplicates
 
 class ImageLoader:
@@ -39,29 +40,34 @@ class ImageLoader:
 
 if __name__ == "__main__":
     imageRoot = "/home/daniel/Pictures/testData"
+    duplicateFolder = "/home/daniel/Pictures/duplicates"
 
     dHandler = FindDuplicates("dHash")
     pHandler = FindDuplicates("pHash")
 
     images = ImageLoader(os.path.abspath(imageRoot)).get_images()
-    dDuplicates = dHandler.find_duplicates(images, min_distance=5)
-    pDuplicates = pHandler.find_duplicates(images, min_distance=5)
-    
-    print("processing FERPlus\n====")
-    print(f"Total images: {len(images)}")
-    print(f"Duplicates found (dHash): {len(dDuplicates)}")
-    print(f"Duplicates found (pHash): {len(pDuplicates)}")
-    print("--------------------------------------")
+    pDuplicates = pHandler.find_duplicates(images, min_distance=20)
 
-    imageRoot = "/home/daniel/Pictures/ready_to_use_datasets"
+    for dup in pDuplicates:
+        filename = dup.split("/")[-1]
+        filepath = os.path.join(duplicateFolder, filename)
+
+        shutil.move(dup, filepath)
+
 
     images = ImageLoader(os.path.abspath(imageRoot)).get_images()
-    dDuplicates = dHandler.find_duplicates(images, min_distance=5)
-    pDuplicates = pHandler.find_duplicates(images, min_distance=5)
+    dDuplicates = dHandler.find_duplicates(images, min_distance=10)
 
+    for dup in dDuplicates:
+        filename = dup.split("/")[-1]
+        filepath = os.path.join(duplicateFolder, filename)
 
-    print("processing ready_to_use_datasets\n====")
+        shutil.move(dup, filepath)
+
+    print("processing DFEW\n====")
     print(f"Total images: {len(images)}")
     print(f"Duplicates found (dHash): {len(dDuplicates)}")
     print(f"Duplicates found (pHash): {len(pDuplicates)}")
     print("--------------------------------------")
+
+    

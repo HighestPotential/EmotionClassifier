@@ -112,7 +112,7 @@ class FindDuplicates:
         
         for i in range(numPasses):
             strBatch = images[i*batch_size: (i+1)*batch_size]
-            imgBatch = self._load_images(strBatch=strBatch)
+            imgBatch = self._load_images(strBatch)
             hashes = list(map(self.hashF, imgBatch))
 
             entries = list(zip(hashes, strBatch))
@@ -122,8 +122,7 @@ class FindDuplicates:
 
                 f = lambda x: self._hamming_distance(suffix, x[0]) > min_distance
 
-                index = prefix
-                similar = bucketMap.setdefault(index, [])
+                similar = bucketMap.setdefault(prefix, [])
 
                 distancesOk = list(map(f, similar))
                 if all(distancesOk) or len(similar) == 0:
