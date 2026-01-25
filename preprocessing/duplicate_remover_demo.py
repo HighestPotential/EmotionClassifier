@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
 
     images = ImageLoader(os.path.abspath(imageRoot)).get_images()
-    dDuplicates = dHandler.find_duplicates(images, min_distance=10)
+    dDuplicates = dHandler.find_duplicates(images, min_distance=20)
 
     for dup in dDuplicates:
         filename = dup.split("/")[-1]
