@@ -12,6 +12,7 @@ from torchvision import transforms
 from captum.attr import IntegratedGradients, NoiseTunnel
 from captum.attr import visualization as viz
 from tqdm import tqdm
+import argparse
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -20,8 +21,7 @@ from models.aleks.aleks_resnet18_se import ResNet18SE
 
 
 MODEL_PATH = r"C:\Users\drnes\OneDrive\Desktop\PC\Aleks\Aleks Uni\Computer Vision\Final_Project\EmotionClassifier\EmotionClassifier-aleks\models\aleks\weights\best_resnet18_se_SGD_cbfl.pth"
-DATASET_ROOT = r"C:\Users\drnes\OneDrive\Desktop\PC\Aleks\Aleks Uni\Computer Vision\Final_Project\EmotionClassifier\EmotionClassifier-aleks\ready_to_use_datasets"
-OUTPUT_DIR = "ig_results_all"
+OUTPUT_DIR = "ig_results"
 
 CLASSES = ["anger", "disgust", "fear", "happiness", "sadness", "surprise"]
 
@@ -39,32 +39,20 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
 
 
-def get_all_images(root):
+def get_test_images(test_root):
     samples = []
-    for dataset in os.listdir(root):
-        dataset_path = os.path.join(root, dataset)
-        if not os.path.isdir(dataset_path):
+    for cls in CLASSES:
+        cls_path = os.path.join(test_root, cls)
+        if not os.path.isdir(cls_path):
             continue
 
-        for split in ["train", "eval", "test"]:
-            split_path = os.path.join(dataset_path, split)
-            if not os.path.isdir(split_path):
-                continue
-
-            for cls in CLASSES:
-                cls_path = os.path.join(split_path, cls)
-                if not os.path.isdir(cls_path):
-                    continue
-
-                for img in os.listdir(cls_path):
-                    if img.lower().endswith((".jpg", ".jpeg", ".png")):
-                        samples.append({
-                            "path": os.path.join(cls_path, img),
-                            "label": cls,
-                            "split": split,
-                            "dataset": dataset,
-                            "filename": img
-                        })
+        for img in os.listdir(cls_path):
+            if img.lower().endswith((".jpg", ".jpeg", ".png")):
+                samples.append({
+                    "path": os.path.join(cls_path, img),
+                    "label": cls,
+                    "filename": img
+                })
     return samples
 
 
@@ -110,7 +98,7 @@ def compute_ig(model, x, target):
     return attr.abs().sum(dim=1)
 
 
-def visualize_and_save(x, attr, label, fname, confidence, split, dataset):
+def visualize_and_save(x, attr, label, fname, confidence):
     img = x.detach().squeeze().cpu().numpy()
     img = np.transpose(img, (1, 2, 0))
     img = (img * 0.5) + 0.5
@@ -136,13 +124,20 @@ def visualize_and_save(x, attr, label, fname, confidence, split, dataset):
         use_pyplot=False
     )
 
-    safe_name = fname.replace(" ", "_").replace("/", "_")
-    out_name = f"{dataset}_{split}_{label}_{safe_name}"
-    fig.savefig(os.path.join(OUTPUT_DIR, out_name), dpi=200, bbox_inches="tight")
+    safe = fname.replace(" ", "_").replace("/", "_")
+    fig.savefig(os.path.join(OUTPUT_DIR, f"{label}_{safe}"), dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Run Integrated Gradients on test set")
+    parser.add_argument("test_dir", type=str, help="Path to test set directory")
+    args = parser.parse_args()
+
+    test_dir = args.test_dir
+    if not os.path.isdir(test_dir):
+        raise ValueError(f"Invalid test directory: {test_dir}")
+
     set_seed(SEED)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -150,8 +145,8 @@ def main():
     model = load_model(device)
     preprocess = get_preprocess()
 
-    samples = get_all_images(DATASET_ROOT)
-    print(f"Total images found: {len(samples)}")
+    samples = get_test_images(test_dir)
+    print(f"Test images found: {len(samples)}")
 
     for s in tqdm(samples, desc="Computing Integrated Gradients", unit="img"):
         try:
@@ -165,8 +160,7 @@ def main():
         target = CLASSES.index(s["label"])
 
         with torch.no_grad():
-            logits = model(x)
-            probs = F.softmax(logits, dim=1)
+            probs = F.softmax(model(x), dim=1)
             confidence = probs[0, target].item()
 
         attr = compute_ig(model, x, target)
@@ -176,9 +170,7 @@ def main():
             attr,
             s["label"],
             s["filename"],
-            confidence,
-            s["split"],
-            s["dataset"]
+            confidence
         )
 
         if torch.cuda.is_available():
