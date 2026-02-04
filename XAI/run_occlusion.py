@@ -92,9 +92,9 @@ def load_model(weights_path: Path, device):
     if missing or unexpected:
         print("Warning: load_state_dict mismatch")
         if missing:
-            print("  Missing keys:", missing[:20], ("..." if len(missing) > 20 else ""))
+            print("Missing keys:", missing[:20], ("..." if len(missing) > 20 else ""))
         if unexpected:
-            print("  Unexpected keys:", unexpected[:20], ("..." if len(unexpected) > 20 else ""))
+            print("Unexpected keys:", unexpected[:20], ("..." if len(unexpected) > 20 else ""))
 
     model.eval()
     return model
@@ -108,9 +108,7 @@ def predict_probs(model, x):
 
 
 def occlusion_sensitivity(model, x, class_idx, patch=PATCH, stride=STRIDE, occlude_value=OCCLUDE_VALUE):
-    """
-    Fixed occlusion sensitivity that properly accumulates importance scores.
-    """
+
     _, _, H, W = x.shape
     base_probs, _ = predict_probs(model, x)
     base_p = float(base_probs[0, class_idx].item())
@@ -144,9 +142,7 @@ def occlusion_sensitivity(model, x, class_idx, patch=PATCH, stride=STRIDE, occlu
 
 
 def overlay_heatmap(img_pil: Image.Image, heat_2d: np.ndarray, max_alpha=0.65):
-    """
-    Improved heatmap overlay with better visual quality.
-    """
+
     img_rgba = img_pil.convert("RGBA")
     w, h = img_rgba.size
 
@@ -239,7 +235,7 @@ def main():
         
         print(f"  GT: {gt} | Pred: {pred} ({conf:.2%}) | Heat range: [{heat.min():.3f}, {heat.max():.3f}]")
 
-    print(f"\n✓ Saved {len(samples)} occlusion maps to:")
+    print(f"\n Saved {len(samples)} occlusion maps to:")
     print(f"  {out_dir}")
 
 

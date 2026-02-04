@@ -11,6 +11,7 @@ from PIL import Image
 from torchvision import transforms
 from captum.attr import IntegratedGradients, NoiseTunnel
 from captum.attr import visualization as viz
+from tqdm import tqdm
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -27,7 +28,6 @@ SPLITS = ["eval"]
 
 IMAGE_SIZE = 64
 CANDIDATES_PER_CLASS = 150
-CONFIDENCE_THRESHOLD = 0.85
 TOP_K = 12
 
 IG_STEPS = 150
@@ -46,22 +46,31 @@ def set_seed(seed):
 def get_candidate_images(root, max_per_class):
     samples = []
     for dataset in os.listdir(root):
+        dataset_path = os.path.join(root, dataset)
+        if not os.path.isdir(dataset_path):
+            continue
+
         for split in SPLITS:
-            split_path = os.path.join(root, dataset, split)
+            split_path = os.path.join(dataset_path, split)
             if not os.path.isdir(split_path):
                 continue
+
             for cls in CLASSES:
                 cls_path = os.path.join(split_path, cls)
                 if not os.path.isdir(cls_path):
                     continue
-                imgs = [f for f in os.listdir(cls_path) if f.lower().endswith((".jpg", ".png", ".jpeg"))]
+
+                imgs = [f for f in os.listdir(cls_path)
+                        if f.lower().endswith((".jpg", ".jpeg", ".png"))]
+
                 chosen = random.sample(imgs, min(len(imgs), max_per_class))
                 for img in chosen:
                     samples.append({
                         "path": os.path.join(cls_path, img),
                         "label": cls,
-                        "filename": img,
-                        "split": split
+                        "split": split,
+                        "dataset": dataset,
+                        "filename": img
                     })
     return samples
 
@@ -85,29 +94,11 @@ def load_model(device):
     return model
 
 
-def evaluate_prediction(model, x, true_label_idx):
-    with torch.no_grad():
-        logits = model(x)
-        probs = F.softmax(logits, dim=1)
-        pred_idx = probs.argmax(dim=1).item()
-        confidence = probs[0, pred_idx].item()
-    return pred_idx == true_label_idx, confidence, pred_idx
-
-
-def compute_attribution_quality(attr):
-    attr_np = attr.detach().cpu().numpy().squeeze()
-    if attr_np.max() == 0:
-        return 0.0
-    attr_norm = attr_np / attr_np.max()
-    focus = np.sum(attr_norm > np.percentile(attr_norm, 80)) / attr_norm.size
-    variance = np.var(attr_norm)
-    return (1 - focus) * variance * 100
-
-
 def compute_ig(model, x, target):
     ig = IntegratedGradients(model)
     nt = NoiseTunnel(ig)
     baseline = torch.zeros_like(x)
+
     attr = nt.attribute(
         x,
         baselines=baseline,
@@ -118,10 +109,11 @@ def compute_ig(model, x, target):
         stdevs=NT_STDEVS,
         internal_batch_size=NT_SAMPLES
     )
+
     return attr.abs().sum(dim=1)
 
 
-def visualize_and_save(x, attr, label, fname, confidence):
+def visualize_and_save(x, attr, label, fname, split, dataset):
     img = x.detach().squeeze().cpu().numpy()
     img = np.transpose(img, (1, 2, 0))
     img = (img * 0.5) + 0.5
@@ -140,7 +132,7 @@ def visualize_and_save(x, attr, label, fname, confidence):
         outlier_perc=1,
         alpha_overlay=0.7,
         titles=[
-            f"Original ({label}, conf: {confidence:.1%})",
+            f"Original ({label})",
             "Integrated Gradients (Overlay)",
             "Integrated Gradients (Heatmap)"
         ],
@@ -148,7 +140,8 @@ def visualize_and_save(x, attr, label, fname, confidence):
     )
 
     safe = fname.replace(" ", "_").replace("/", "_")
-    fig.savefig(os.path.join(OUTPUT_DIR, f"{label}_{safe}"), dpi=200, bbox_inches="tight")
+    out_name = f"{dataset}_{split}_{label}_{safe}"
+    fig.savefig(os.path.join(OUTPUT_DIR, out_name), dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -160,50 +153,35 @@ def main():
     model = load_model(device)
     preprocess = get_preprocess()
 
-    print("Collecting candidate images...")
     candidates = get_candidate_images(DATASET_ROOT, CANDIDATES_PER_CLASS)
+    random.shuffle(candidates)
 
-    scored = []
-    print("Evaluating candidates...")
-    for s in candidates:
+    selected = candidates[:TOP_K]
+    print(f"Selected {len(selected)} random samples")
+
+    for s in tqdm(selected, desc="Computing Integrated Gradients", unit="img"):
         try:
             img = Image.open(s["path"]).convert("RGB")
         except:
             continue
 
         x = preprocess(img).unsqueeze(0).to(device)
-        true_idx = CLASSES.index(s["label"])
-        correct, conf, _ = evaluate_prediction(model, x, true_idx)
-
-        if correct and conf >= CONFIDENCE_THRESHOLD:
-            x.requires_grad_(True)
-            attr = compute_ig(model, x, true_idx)
-            quality = compute_attribution_quality(attr)
-            scored.append({**s, "confidence": conf, "quality": quality})
-
-    scored = sorted(
-        scored,
-        key=lambda x: (0.3 * x["confidence"] + 0.7 * x["quality"]),
-        reverse=True
-    )[:TOP_K]
-
-    print(f"\nGenerating IG for top {len(scored)} samples...\n")
-
-    for i, s in enumerate(scored, 1):
-        img = Image.open(s["path"]).convert("RGB")
-        x = preprocess(img).unsqueeze(0).to(device)
         x.requires_grad_(True)
 
         target = CLASSES.index(s["label"])
         attr = compute_ig(model, x, target)
-        visualize_and_save(x, attr, s["label"], s["filename"], s["confidence"])
 
-        print(f"[{i}/{len(scored)}] {s['label']} | {s['confidence']:.1%}")
+        visualize_and_save(
+            x,
+            attr,
+            s["label"],
+            s["filename"],
+            s["split"],
+            s["dataset"]
+        )
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-
-    print("\nDone. Results saved to:", OUTPUT_DIR)
 
 
 if __name__ == "__main__":
