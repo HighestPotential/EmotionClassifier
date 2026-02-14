@@ -5,8 +5,10 @@ from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import os
 import sys
-import importlib.util
 import time
+import platform
+import urllib.request
+from collections import deque
 
 import argparse
 from aleks_resnet18_se import ResNet18SE
@@ -14,9 +16,7 @@ from aleks_resnet18_se import ResNet18SE
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 
-MODEL_SOURCE_PATH = os.path.join(PROJECT_ROOT, "models", "dmytro", "CCT-7withSAM", "custom_cct.py")
-MODEL_CHECKPOINT_PATH_CCT = os.path.join(CURRENT_DIR, "model_checkpoint_epoch_185.pth")
-MODEL_CHECKPOINT_PATH_RESNET18 = os.path.join(CURRENT_DIR, "best_resnet18_se.pth")
+MODEL_CHECKPOINT_PATH_RESNET18 = os.path.join(CURRENT_DIR, "best_resnet18_se_SGD_cbfl.pth")
 
 IMG_SIZE = 64
 CLASSES = ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise']
@@ -31,36 +31,14 @@ EMOJI_MAP = {
     'surprise': '😲'
 }
 
-def load_model_dynamically(path):
-    print(f"Importing model architecture from: {path}")
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Could not find model file at {path}")
 
-    src_dir = os.path.dirname(path)          
-    package_root = os.path.dirname(src_dir)  
-
-    if package_root not in sys.path:
-        sys.path.insert(0, package_root)
-
-    package_name = os.path.basename(src_dir) 
-    module_name = f"{package_name}.cct"
-
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    cct_module = importlib.util.module_from_spec(spec)
-    
-    sys.modules[module_name] = cct_module
-    spec.loader.exec_module(cct_module)
-    
-    return cct_module.CCT
 
 class EmotionDemo:
-    def __init__(self, model_type='cct', checkpoint_path=None):
+    def __init__(self, checkpoint_path=None):
         self.device = DEVICE
-        self.model_type = model_type.lower()
         self.checkpoint_path = checkpoint_path
         print(f"Running on device: {self.device}")
-        print(f"Model Type: {self.model_type}")
-
+        
         # Haar Cascade
         cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         self.face_cascade = cv2.CascadeClassifier(cascade_path)
@@ -74,53 +52,74 @@ class EmotionDemo:
         ])
 
         # Load Font
-        try:
+        self.font = self._load_emoji_font()
+
+    def _load_emoji_font(self):
+        font_size = 24
+        system = platform.system()
+        font_path = None
+        
+        print(f"Detected OS: {system}")
+
+        if system == "Windows":
             # Segoe UI Emoji is the standard Windows emoji font
-            self.font = ImageFont.truetype("C:\\Windows\\Fonts\\seguiemj.ttf", 40)
-        except OSError:
-            print("Warning: Segoe UI Emoji font not found. Emojis might not render.")
-            self.font = ImageFont.load_default()
+            font_path = "C:\\Windows\\Fonts\\seguiemj.ttf"
+
+        elif system == "Darwin":
+            font_path = "/System/Library/Fonts/Apple Color Emoji.ttc"
+        
+        # Try loading system font
+        if font_path and os.path.exists(font_path):
+             try:
+                 print(f"Loading system emoji font from: {font_path}")
+                 return ImageFont.truetype(font_path, font_size)
+             except Exception as e:
+                 print(f"Failed to load system font: {e}")
+
+        # Fallback: Check for local NotoColorEmoji or download it
+        local_font_name = "NotoColorEmoji.ttf"
+        local_font_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), local_font_name)
+        
+        if not os.path.exists(local_font_path):
+            print(f"System emoji font not found. Downloading {local_font_name}...")
+            url = "https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf"
+            try:
+                urllib.request.urlretrieve(url, local_font_path)
+                print("Download complete.")
+            except Exception as e:
+                print(f"Failed to download font: {e}")
+                print("Warning: Emojis might not render correctly.")
+                return ImageFont.load_default()
+
+        try:
+            print(f"Loading local emoji font from: {local_font_path}")
+            return ImageFont.truetype(local_font_path, font_size)
+        except Exception as e:
+            print(f"Failed to load local font: {e}")
+            return ImageFont.load_default()
 
     def _setup_model(self):
-        if self.model_type == 'resnet18':
-            model = ResNet18SE(num_classes=len(CLASSES), reduction=16)
-            
-            if hasattr(model, "fc") and isinstance(model.fc, torch.nn.Linear):
-                in_f = model.fc.in_features
-                model.fc = torch.nn.Sequential(
-                    torch.nn.Dropout(p=0.3),
-                    torch.nn.Linear(in_f, len(CLASSES))
-                )
-
-            if not self.checkpoint_path:
-                print("Warning: No checkpoint path provided for ResNet18. Initializing with random weights.")
-            else:
-                print(f"Loading weights from: {self.checkpoint_path}")
-                try:
-                    state_dict = torch.load(self.checkpoint_path, map_location=self.device)
-                except Exception as e:
-                    print(f"Error loading weights: {e}")
-                    raise e
-                    
-                model.load_state_dict(state_dict)
-
-        else: # Default to CCT
-            CCT_Class = load_model_dynamically(MODEL_SOURCE_PATH)
-            model = CCT_Class(
-                img_size=IMG_SIZE,
-                num_classes=len(CLASSES),
-                positional_embedding='learnable'
+        # Always ResNet18
+        model = ResNet18SE(num_classes=len(CLASSES))
+        
+        if hasattr(model, "fc") and isinstance(model.fc, torch.nn.Linear):
+            in_f = model.fc.in_features
+            model.fc = torch.nn.Sequential(
+                torch.nn.Dropout(p=0.3),
+                torch.nn.Linear(in_f, len(CLASSES))
             )
-            
-            path = self.checkpoint_path if self.checkpoint_path else MODEL_CHECKPOINT_PATH_CCT
-            print(f"Loading weights from: {path}")
-            
-            if os.path.exists(path):
-                state_dict = torch.load(path, map_location=self.device)
-                model.load_state_dict(state_dict)
-            else:
-                 print(f"Warning: Checkpoint not found at {path}. Using random weights.")
 
+        if not self.checkpoint_path:
+            print("Warning: No checkpoint path provided for ResNet18. Initializing with random weights.")
+        else:
+            print(f"Loading weights from: {self.checkpoint_path}")
+            try:
+                state_dict = torch.load(self.checkpoint_path, map_location=self.device)
+            except Exception as e:
+                print(f"Error loading weights: {e}")
+                raise e
+            
+            model.load_state_dict(state_dict)
 
         model.to(self.device)
         model.eval()
@@ -160,7 +159,15 @@ class EmotionDemo:
         print("Starting Demo... Press 'q' to quit.")
 
         prev_time = 0
-        cached_results = [] 
+        cached_results = []
+        
+        # Tracking state
+        # structure: { id: {'history': deque(maxlen=3), 'centroid': (cx, cy), 'last_seen': time} }
+        active_tracks = {} 
+        next_track_id = 0
+        
+        # Target FPS for processing (3 times per second)
+        PROCESS_INTERVAL = 1.0 / 3.0
 
         while True:
             ret, frame = cap.read()
@@ -168,12 +175,15 @@ class EmotionDemo:
                 break
 
             now = time.time()
-            if now - prev_time >= 0.5:
+            if now - prev_time >= PROCESS_INTERVAL:
                 prev_time = now
                 cached_results = [] 
                 
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) #makes the model do detection faster in grayscale
                 faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
+
+                # Current frame detections
+                current_frame_data = []
 
                 for (x, y, w, h) in faces:
                     x1, y1 = x, y
@@ -184,6 +194,8 @@ class EmotionDemo:
                     
                     face_roi = frame[y1:y2, x1:x2]
                     if face_roi.size == 0: continue
+                    
+                    cx, cy = x + w // 2, y + h // 2
 
                     face_rgb = cv2.cvtColor(face_roi, cv2.COLOR_BGR2RGB)
                     pil_img = Image.fromarray(face_rgb)
@@ -193,39 +205,97 @@ class EmotionDemo:
                     with torch.no_grad():
                         outputs = self.model(input_tensor)
                         probs = torch.nn.functional.softmax(outputs, dim=1)
-                        confidence, predicted = torch.max(probs, 1)
+                        # Store tensor directly for averaging later
+                    
+                    current_frame_data.append({
+                        'coords': (x1, y1, x2, y2),
+                        'centroid': (cx, cy),
+                        'probs': probs
+                    })
+
+                # Match to existing tracks
+                used_track_ids = set()
+                
+                for data in current_frame_data:
+                    cx, cy = data['centroid']
+                    best_match_id = None
+                    min_dist = float('inf')
+                    
+                    # Search radius
+                    MAX_DIST = 150.0 
+
+                    for t_id, track in active_tracks.items():
+                        if t_id in used_track_ids:
+                            continue
                         
-                        emotion_idx = predicted.item()
-                        emotion = CLASSES[emotion_idx]
-                        conf_score = confidence.item()
+                        tx, ty = track['centroid']
+                        dist = np.sqrt((cx - tx)**2 + (cy - ty)**2)
+                        
+                        if dist < min_dist and dist < MAX_DIST:
+                            min_dist = dist
+                            best_match_id = t_id
+                    
+                    if best_match_id is not None:
+                        # Update existing track
+                        active_tracks[best_match_id]['history'].append(data['probs'])
+                        active_tracks[best_match_id]['centroid'] = (cx, cy)
+                        active_tracks[best_match_id]['last_seen'] = now
+                        used_track_ids.add(best_match_id)
+                        final_probs = torch.mean(torch.stack(list(active_tracks[best_match_id]['history'])), dim=0)
+                    else:
+                        # New track
+                        new_id = next_track_id
+                        next_track_id += 1
+                        history = deque(maxlen=3)
+                        history.append(data['probs'])
+                        
+                        active_tracks[new_id] = {
+                            'history': history,
+                            'centroid': (cx, cy),
+                            'last_seen': now
+                        }
+                        used_track_ids.add(new_id)
+                        final_probs = data['probs']
+                    
+                    # Prepare result for display
+                    confidence, predicted = torch.max(final_probs, 1)
+                    emotion_idx = predicted.item()
+                    emotion = CLASSES[emotion_idx]
+                    conf_score = confidence.item()
 
                     emoji = EMOJI_MAP.get(emotion, '')
                     text_str = f"{emotion} ({conf_score*100:.0f}%)"
                     
                     cached_results.append({
-                        'coords': (x1, y1, x2, y2),
+                        'coords': data['coords'],
                         'emoji': emoji,
                         'text': text_str,
-                        'color': (0, 255, 0) # Text color (Green)
+                        'color': (0, 255, 0)
                     })
+
+                # Cleanup old tracks
+                active_tracks = {
+                    t_id: track 
+                    for t_id, track in active_tracks.items() 
+                    if now - track['last_seen'] < 1.0
+                }
 
             # Draw cached results
             if cached_results:
                 for res in cached_results:
                     x1, y1, x2, y2 = res['coords']
                     
-                    # Draw Box (OpenCV)
+                    # Draw Box
                     cv2.rectangle(frame, (x1, y1), (x2, y2), res['color'], 2)
                     
-                    # Draw Emoji + Text (PIL)
-                    # We pass the RGB tuple for green (0, 255, 0) for the text part
+                    # Draw Emoji + Text
                     frame = self.draw_complex_text(
                         frame, 
                         res['emoji'], 
                         res['text'], 
                         x1, 
-                        y1 - 50, 
-                        (0, 255, 0)
+                        y1 - 30, 
+                        res['color']
                     )
 
             cv2.imshow('Emotion Demo', frame)
@@ -238,15 +308,15 @@ class EmotionDemo:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Emotion Classification Demo")
-    parser.add_argument("--model", type=str, default="cct", choices=["cct", "resnet18"], help="Model type to use: 'cct' or 'resnet18'")
-    parser.add_argument("--checkpoint", type=str, default=None, help="Path to the model checkpoint file. Required for resnet18 if you want loaded weights.")
+    parser.add_argument("--checkpoint", type=str, default=MODEL_CHECKPOINT_PATH_RESNET18, help="Path to the model checkpoint file. Defaults to bundled ResNet18 checkpoint.")
     
     args = parser.parse_args()
-    if not args.checkpoint and args.model == "resnet18":
-        demo = EmotionDemo(model_type=args.model, checkpoint_path=MODEL_CHECKPOINT_PATH_RESNET18)
-    elif not args.checkpoint and args.model == "cct":
-        demo = EmotionDemo(model_type=args.model, checkpoint_path=MODEL_CHECKPOINT_PATH_CCT)
+    
+    # Simple instantiation without model_type
+    if args.checkpoint:
+        demo = EmotionDemo(checkpoint_path=args.checkpoint)
     else:
-        demo = EmotionDemo(model_type=args.model, checkpoint_path=args.checkpoint)
+        # Fallback to default path constant
+        demo = EmotionDemo(checkpoint_path=MODEL_CHECKPOINT_PATH_RESNET18)
 
     demo.run()
