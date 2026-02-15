@@ -1,5 +1,6 @@
 import argparse
 from dataclasses import dataclass
+from typing import Callable, Union
 
 import cv2 as cv
 import numpy as np
@@ -8,22 +9,30 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 
+from pytorch_grad_cam import GradCAM
+from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+from pytorch_grad_cam.utils.image import show_cam_on_image
+
 from aleks_resnet18_se import ResNet18SE
 from retinaface import RetinaFace
+
+BLUE = (255, 0, 0)
+GREEN = (0, 255, 0)
+RED = (0, 0, 255)
+
+@dataclass
+class ModelContext:
+    model: ResNet18SE
+    device: torch.device
+    classifier: nn.Softmax
+    transform: transforms.Compose
+    saliency_fn: Callable[[GradCAM, torch.Tensor, int], np.ndarray]
 
 @dataclass
 class VideoContext:
     input: cv.VideoCapture
     writer: cv.VideoWriter
     detector: RetinaFace
-
-@dataclass
-class ModelContext:
-    model: nn.Module
-    device: torch.device
-    classifier: nn.Softmax
-    transform: transforms.Compose
-
 
 def genVideoContext(input: str, output: str, codec: str) -> VideoContext:
     vid = cv.VideoCapture(input)
@@ -40,7 +49,9 @@ def genVideoContext(input: str, output: str, codec: str) -> VideoContext:
 
     detector = RetinaFace
 
-    return VideoContext(vid, writer, detector)
+    return VideoContext(input=vid,
+                        writer=writer,
+                        detector=detector,)
 
 def genModelContext():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -50,23 +61,46 @@ def genModelContext():
 
     modelState = torch.load("./ResNet18_trained.pth", map_location=device, weights_only=False)
     model.load_state_dict(modelState)
+    model.eval()
 
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
+    saliency_fn = genGradCAM
+
     return ModelContext(model=model,
                  device=device,
                  classifier=softmax,
-                 transform=transform)
+                 transform=transform,
+                 saliency_fn=saliency_fn)
 
-def contextCelanup(ctx: VideoContext):
+def contextCleanup(ctx: VideoContext):
     ctx.input.release()
     ctx.writer.release()
 
-def main(videoCtx: VideoContext, modelCtx: ModelContext):
+def genGradCAM(cam: GradCAM, frame: torch.Tensor, label: int) -> np.ndarray:
+    targetEmotion = [ClassifierOutputTarget(label)]
+
+    result = cam(input_tensor=frame, targets=targetEmotion)
+
+    img = frame.squeeze().cpu().numpy().transpose(1, 2, 0)
+    img = (img * [0.5, 0.5, 0.5]) + [0.5, 0.5, 0.5]
+    img = np.clip(img, 0, 1)
+
+    overlay = show_cam_on_image(img=img, mask=result[0], use_rgb=False, image_weight=0.8)
+    return overlay
+
+def main(videoCtx: VideoContext, modelCtx: ModelContext, avgIters: int = 5):
+    iteration = 0
+    previousEmotion = ""
+    accumulator = 0
+
+    cam = GradCAM(model=modelCtx.model, target_layers=[modelCtx.model.layer3[-1]])
+
     while True:
+        iteration = iteration % avgIters
         ret, frame = videoCtx.input.read()
         if not ret:
             break
@@ -75,25 +109,45 @@ def main(videoCtx: VideoContext, modelCtx: ModelContext):
 
         for face in faces:
             x1, y1, x2, y2 = faces[f"{face}"]["facial_area"]
-            cv.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+            cv.rectangle(frame, (x1, y1), (x2, y2), GREEN, 5)
 
-            crop = frame[y1:y2, x1:x2]
-            crop = cv.resize(crop, (64, 64))
+            originalCrop = frame[y1:y2, x1:x2]
+            crop = cv.resize(originalCrop, (64, 64))
 
-            inputImg:torch.Tensor = modelCtx.transform(crop)
+            inputImg: torch.Tensor = modelCtx.transform(crop)
             inputImg = inputImg.unsqueeze(0)
 
-            pred: torch.Tensor = modelCtx.model(inputImg)
-            probs: torch.Tensor = modelCtx.classifier(pred)
-            prob = probs.max(dim=1).item()
-
-            idx = pred.argmax(dim=1).item()
+            output: torch.Tensor = modelCtx.model(inputImg)
+            probs: torch.Tensor = modelCtx.classifier(output)
+            confidence, idx = probs.max(dim=1)
+            
+            idx = idx.item()
+            accumulator += confidence.item()
             emotion = modelCtx.model.emotionMap[idx]
-            cv.putText(frame, f"{emotion}: {prob}", (x1, y1 - 10), cv.FONT_HERSHEY_PLAIN, 2, (0, 255, 0), 2)
+
+            if not iteration:
+                printScore = accumulator / avgIters
+                accumulator = 0
+            elif previousEmotion != emotion:
+                printScore = confidence.item()
+                accumulator = confidence.item()
+
+            heatMap = modelCtx.saliency_fn(cam=cam,
+                                           frame=inputImg,
+                                           label=idx)
+            
+            crop_h, crop_w = originalCrop.shape[:2]
+            heatMap = cv.resize(heatMap, (crop_w, crop_h))
+            frame[y1:y2, x1:x2] = heatMap
+
+            cv.putText(frame, f"{emotion}: {(printScore * 100):.1f}", (10, 100), cv.FONT_HERSHEY_PLAIN, 10, RED, 8)
 
         videoCtx.writer.write(frame)
+        
+        iteration += 1
+        previousEmotion = emotion
 
-    contextCelanup(videoCtx)
+    contextCleanup(videoCtx)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog = "Video classifier", 
@@ -110,5 +164,5 @@ if __name__ == "__main__":
 
     vid: VideoContext = genVideoContext(inFile, outFile, codec)
     mod: ModelContext = genModelContext()
-
+   
     main(vid, mod)
