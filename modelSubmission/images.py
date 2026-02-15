@@ -11,74 +11,89 @@
 import os
 import argparse
 import csv
+import math
 
 from PIL import Image
 import numpy as np
 
 import torch
 import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 
 from aleks_resnet18_se import ResNet18SE
 
-def loadImages(paths: list[str])-> np.ndarray:
-    images = []
+class EvalDataset(Dataset):
+    def __init__(self, root: str, transform = None):
+        self.images = []
+        self.transform = transform
 
-    for path in paths:
+        for img in os.listdir(root):
+            filePath = os.path.join(root, img)
+            self.images.append(filePath)
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        path = self.images[idx]
         img = Image.open(path)
-        images.append(np.array(img).astype(np.uint8))
+        img = np.array(img).astype(np.uint8)
+
+        if self.transform:
+            img = self.transform(img)
+
+        return path, img
     
-    return images
+def formatProbs(probs: list[list[float]]):
+    result = []
+    for l in probs:
+        l = [math.trunc(x * 100) / 100 for x in l]
+        l = [f"{x:.2f}" for x in l]
+        result.append(l)
+    
+    return result
 
 def main(input: str, output: str) -> None:
     output_headers = ["Filepath", "Anger", "Disgust", "Fear", "Happiness", "Sadness", "Surprise"]
 
     model = ResNet18SE()
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.load_state_dict(torch.load("ResNet18_trained.pth", weights_only=False, map_location=device))
-
-    # Load Files
-    paths = []
-    fileDir = os.path.join(os.getcwd(), input)
-    files = os.listdir(fileDir)
-    for file in files:
-        filePath = os.path.join(fileDir, file)
-        paths.append(filePath)
 
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
-    data = loadImages(paths=paths)
-    dataTensor = torch.tensor(np.array([transform(dp) for dp in data]))
-
-    logits = model(dataTensor)
+    dataset = EvalDataset(input, transform=transform)
+    loader = DataLoader(dataset, batch_size=64)
     softmax = nn.Softmax(dim=1)
-    probs = softmax(logits)
 
-    all_probs = probs.tolist()
-    for i in range(len(all_probs)):
-        file = paths[i]
-        result = all_probs[i]
-        result = [f"{r:.3f}" for r in result]
+    with open(output, "w") as file:
+        writer = csv.writer(file)
+        writer.writerow(output_headers)
 
-        with open(output, mode="a") as f:
-            writer = csv.writer(f)
-            if i == 0:
-                writer.writerow(output_headers)
-            writer.writerow([file] + result)
-                
+        for paths, img in loader:
+            img.to(device)
+            logits = model(img)
+            probs = softmax(logits)
 
+            pathList = [*paths]
+            dataList = probs.tolist()
+            dataList = formatProbs(dataList)
+
+            outData = list(map(lambda x, y: [x] + y, pathList, dataList))
+            writer.writerows(outData)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("in_dir", help="Input directory containing images to evaluate")
-    parser.add_argument("out_file", help="Output csv file")
+    parser.add_argument("-of", help="Output csv file", default="./result.csv", required=False)
 
     args = parser.parse_args()
 
     dataDir = args.in_dir
-    output = args.out_file
+    output = args.of
 
     main(dataDir, output)

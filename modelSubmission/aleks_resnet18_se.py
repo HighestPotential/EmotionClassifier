@@ -55,9 +55,19 @@ class BasicBlockSE(nn.Module):
         return out
     
 class ResNet18SE(nn.Module):
+
     def __init__(self, num_classes=6, reduction=16):
         super().__init__()
         self.in_ch = 64
+
+        self.emotionMap = {
+            0: "anger",
+            1: "disgust",
+            2: "fear",
+            3: "happiness",
+            4: "sadness",
+            5: "surprise",
+        }
 
         self.conv1 = nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
