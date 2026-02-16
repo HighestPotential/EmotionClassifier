@@ -1,3 +1,16 @@
+"""
+Offline video processor — reads a video file, detects faces, classifies
+emotions with optional XAI heatmap overlays (GradCAM / Integrated Gradients),
+and writes the annotated result to a new video file.
+
+Usage examples
+--------------
+    python process_video.py input.mp4 --xai gradcam
+    python process_video.py input.mp4 --xai ig
+    python process_video.py input.mp4 --xai none
+    python process_video.py input.mp4 --xai gradcam --output out.mp4
+"""
+
 import cv2
 import torch
 import torch.nn as nn
@@ -6,7 +19,6 @@ import torchvision.transforms as transforms
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import os
-import time
 import platform
 import urllib.request
 from collections import deque
@@ -33,7 +45,7 @@ EMOJI_MAP = {
 
 
 # ---------------------------------------------------------------------------
-#  XAI helpers
+#  XAI helpers  (same as demo.py)
 # ---------------------------------------------------------------------------
 
 class GradCAMHelper:
@@ -71,9 +83,9 @@ class GradCAMHelper:
 
 
 class IntegratedGradientsHelper:
-    """Thin wrapper around captum IntegratedGradients for real-time use."""
+    """Thin wrapper around captum IntegratedGradients for offline use."""
 
-    def __init__(self, model, n_steps=30):
+    def __init__(self, model, n_steps=50):
         from captum.attr import IntegratedGradients
         self.ig = IntegratedGradients(model)
         self.model = model
@@ -95,7 +107,6 @@ class IntegratedGradientsHelper:
             n_steps=self.n_steps,
             internal_batch_size=self.n_steps,
         )
-        # Aggregate across channels -> single heatmap
         cam = attr.abs().sum(dim=1)[0].detach().cpu().numpy()
         cam -= cam.min()
         cam /= cam.max() + 1e-8
@@ -118,23 +129,22 @@ def overlay_heatmap(frame, cam, x1, y1, x2, y2, alpha=0.5):
 
 
 # ---------------------------------------------------------------------------
-#  Main demo class
+#  Video processor
 # ---------------------------------------------------------------------------
 
-class EmotionDemo:
-    def __init__(self, checkpoint_path=None, xai_method="none"):
+class VideoProcessor:
+    def __init__(self, checkpoint_path, xai_method="none"):
         self.device = DEVICE
-        self.checkpoint_path = checkpoint_path
         self.xai_method = xai_method
         print(f"Running on device: {self.device}")
         print(f"XAI method: {self.xai_method}")
-        
+
         # Haar Cascade
         cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         self.face_cascade = cv2.CascadeClassifier(cascade_path)
 
-        self.model = self._setup_model()
-        
+        self.model = self._setup_model(checkpoint_path)
+
         self.transform = transforms.Compose([
             transforms.Resize((IMG_SIZE, IMG_SIZE)),
             transforms.ToTensor(),
@@ -147,59 +157,18 @@ class EmotionDemo:
             target_layer = self.model.layer4[-1]
             self.xai = GradCAMHelper(self.model, target_layer)
         elif self.xai_method == "ig":
-            self.xai = IntegratedGradientsHelper(self.model, n_steps=30)
+            self.xai = IntegratedGradientsHelper(self.model, n_steps=50)
 
-        # Load Font
-        self.font = self._load_emoji_font()
+        # Font is loaded in process() once we know the video resolution
+        self.font = None
+        self.text_offset = 30
+        self.box_thickness = 2
 
-    def _load_emoji_font(self):
-        font_size = 24
-        system = platform.system()
-        font_path = None
-        
-        print(f"Detected OS: {system}")
+    # ---- model ----
 
-        if system == "Windows":
-            # Segoe UI Emoji is the standard Windows emoji font
-            font_path = "C:\\Windows\\Fonts\\seguiemj.ttf"
-
-        elif system == "Darwin":
-            font_path = "/System/Library/Fonts/Apple Color Emoji.ttc"
-        
-        # Try loading system font
-        if font_path and os.path.exists(font_path):
-             try:
-                 print(f"Loading system emoji font from: {font_path}")
-                 return ImageFont.truetype(font_path, font_size)
-             except Exception as e:
-                 print(f"Failed to load system font: {e}")
-
-        # Fallback: Check for local NotoColorEmoji or download it
-        local_font_name = "NotoColorEmoji.ttf"
-        local_font_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), local_font_name)
-        
-        if not os.path.exists(local_font_path):
-            print(f"System emoji font not found. Downloading {local_font_name}...")
-            url = "https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf"
-            try:
-                urllib.request.urlretrieve(url, local_font_path)
-                print("Download complete.")
-            except Exception as e:
-                print(f"Failed to download font: {e}")
-                print("Warning: Emojis might not render correctly.")
-                return ImageFont.load_default()
-
-        try:
-            print(f"Loading local emoji font from: {local_font_path}")
-            return ImageFont.truetype(local_font_path, font_size)
-        except Exception as e:
-            print(f"Failed to load local font: {e}")
-            return ImageFont.load_default()
-
-    def _setup_model(self):
-        # Always ResNet18
+    def _setup_model(self, checkpoint_path):
         model = ResNet18SE(num_classes=len(CLASSES))
-        
+
         if hasattr(model, "fc") and isinstance(model.fc, torch.nn.Linear):
             in_f = model.fc.in_features
             model.fc = torch.nn.Sequential(
@@ -207,118 +176,143 @@ class EmotionDemo:
                 torch.nn.Linear(in_f, len(CLASSES))
             )
 
-        if not self.checkpoint_path:
-            print("Warning: No checkpoint path provided for ResNet18. Initializing with random weights.")
+        if not checkpoint_path:
+            print("Warning: No checkpoint path. Random weights.")
         else:
-            print(f"Loading weights from: {self.checkpoint_path}")
-            try:
-                state_dict = torch.load(self.checkpoint_path, map_location=self.device)
-            except Exception as e:
-                print(f"Error loading weights: {e}")
-                raise e
-            
+            print(f"Loading weights from: {checkpoint_path}")
+            state_dict = torch.load(checkpoint_path, map_location=self.device)
             model.load_state_dict(state_dict)
 
         model.to(self.device)
         model.eval()
         return model
 
+    # ---- font ----
+
+    def _load_emoji_font(self, font_size):
+        system = platform.system()
+        font_path = None
+
+        if system == "Windows":
+            font_path = "C:\\Windows\\Fonts\\seguiemj.ttf"
+        elif system == "Darwin":
+            font_path = "/System/Library/Fonts/Apple Color Emoji.ttc"
+
+        if font_path and os.path.exists(font_path):
+            try:
+                return ImageFont.truetype(font_path, font_size)
+            except Exception:
+                pass
+
+        local_font_path = os.path.join(CURRENT_DIR, "NotoColorEmoji.ttf")
+        if not os.path.exists(local_font_path):
+            url = "https://github.com/googlefonts/noto-emoji/raw/main/fonts/NotoColorEmoji.ttf"
+            try:
+                urllib.request.urlretrieve(url, local_font_path)
+            except Exception:
+                return ImageFont.load_default()
+
+        try:
+            return ImageFont.truetype(local_font_path, font_size)
+        except Exception:
+            return ImageFont.load_default()
+
+    # ---- drawing ----
+
     def draw_complex_text(self, frame, emoji, text, x, y, text_color):
-        """
-        Draws the emoji in its natural color (using embedded_color=True) 
-        and the text in the specified text_color.
-        """
         cv2_im_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         pil_im = Image.fromarray(cv2_im_rgb)
         draw = ImageDraw.Draw(pil_im)
 
-        # 1. Draw Emoji (Native Color)
         try:
             draw.text((x, y), emoji, font=self.font, embedded_color=True)
         except TypeError:
-            # Fallback for older Pillow versions (<10.1.0)
-            draw.text((x, y), emoji, font=self.font, fill=(255,255,255))
-        
-        # 2. Calculate offset to draw text next to emoji
-        # getlength returns the width of the string in pixels
+            draw.text((x, y), emoji, font=self.font, fill=(255, 255, 255))
+
         emoji_width = self.font.getlength(emoji)
-        
-        # 3. Draw Text (Custom Color, e.g., Green)
         draw.text((x + emoji_width + 5, y), text, font=self.font, fill=text_color)
 
         return cv2.cvtColor(np.array(pil_im), cv2.COLOR_RGB2BGR)
 
-    def _compute_xai_heatmap(self, input_tensor):
-        """Run the selected XAI method and return (heatmap, class_idx, probs).
-        
-        heatmap is a float32 numpy array in [0, 1], or None if XAI is disabled.
-        """
+    # ---- XAI ----
+
+    def _compute_xai(self, input_tensor):
         if self.xai is None:
             return None, None, None
         return self.xai(input_tensor)
 
-    def run(self):
-        cap = cv2.VideoCapture(0)
+    # ---- main loop ----
+
+    def process(self, input_path, output_path):
+        cap = cv2.VideoCapture(input_path)
         if not cap.isOpened():
-            print("Error: Webcam not found.")
-            return
+            raise RuntimeError(f"Cannot open video: {input_path}")
 
-        print("Starting Demo... Press 'q' to quit.")
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        prev_time = 0
-        cached_results = []
-        
-        # Tracking state
-        # structure: { id: {'history': deque(maxlen=3), 'centroid': (cx, cy), 'last_seen': time} }
-        active_tracks = {} 
+        scale = min(width, height) / 720.0
+        font_size = max(16, int(24 * scale))
+        self.font = self._load_emoji_font(font_size)
+        self.text_offset = max(20, int(30 * scale))
+        self.box_thickness = max(2, int(2 * scale))
+
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+        print(f"Input : {input_path}  ({width}x{height} @ {fps:.1f} fps, {total_frames} frames)")
+        print(f"Output: {output_path}")
+
+        # How many frames between each processing step (≈ 5× per second)
+        process_every = max(1, int(round(fps / 5.0)))
+
+        # Tracking state  (same as demo.py)
+        active_tracks = {}
         next_track_id = 0
-        
-        # Target FPS for processing (3 times per second)
-        PROCESS_INTERVAL = 1.0 / 3.0
+        cached_results = []
 
+        frame_idx = 0
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
 
-            now = time.time()
-            if now - prev_time >= PROCESS_INTERVAL:
-                prev_time = now
-                cached_results = [] 
-                
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) #makes the model do detection faster in grayscale
-                faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
+            if frame_idx % process_every == 0:
+                cached_results = []
 
-                # Current frame detections
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                # Scale minimum face size to ~10% of the shorter frame dimension
+                min_face = max(60, int(min(width, height) * 0.10))
+                faces = self.face_cascade.detectMultiScale(gray, 1.1, 15, minSize=(min_face, min_face))
+
                 current_frame_data = []
+                now = frame_idx / fps  # virtual timestamp
 
                 for (x, y, w, h) in faces:
-                    x1, y1 = x, y
-                    x2, y2 = x + w, y + h
-                    
-                    x1, y1 = max(0, x1), max(0, y1)
-                    x2, y2 = min(frame.shape[1], x2), min(frame.shape[0], y2)
-                    
-                    face_roi = frame[y1:y2, x1:x2]
-                    if face_roi.size == 0: continue
-                    
-                    cx, cy = x + w // 2, y + h // 2
+                    x1, y1 = max(0, x), max(0, y)
+                    x2, y2 = min(width, x + w), min(height, y + h)
 
+                    face_roi = frame[y1:y2, x1:x2]
+                    if face_roi.size == 0:
+                        continue
+
+                    cx, cy = x + w // 2, y + h // 2
                     face_rgb = cv2.cvtColor(face_roi, cv2.COLOR_BGR2RGB)
                     pil_img = Image.fromarray(face_rgb)
-                    
                     input_tensor = self.transform(pil_img).unsqueeze(0).to(self.device)
 
-                    # ---------- XAI branch ----------
+                    # XAI branch
                     heatmap = None
                     if self.xai is not None:
-                        heatmap, _xai_cls, xai_probs = self._compute_xai_heatmap(input_tensor)
-                        probs = xai_probs  # reuse probs from XAI forward pass
+                        heatmap, _, xai_probs = self._compute_xai(input_tensor)
+                        probs = xai_probs
                     else:
                         with torch.no_grad():
                             outputs = self.model(input_tensor)
                             probs = F.softmax(outputs, dim=1)
-                    
+
                     current_frame_data.append({
                         'coords': (x1, y1, x2, y2),
                         'centroid': (cx, cy),
@@ -326,59 +320,53 @@ class EmotionDemo:
                         'heatmap': heatmap,
                     })
 
-                # Match to existing tracks
+                # --- track matching (identical to demo.py) ---
                 used_track_ids = set()
-                
+
                 for data in current_frame_data:
                     cx, cy = data['centroid']
                     best_match_id = None
                     min_dist = float('inf')
-                    
-                    # Search radius
-                    MAX_DIST = 150.0 
+                    MAX_DIST = 150.0
 
                     for t_id, track in active_tracks.items():
                         if t_id in used_track_ids:
                             continue
-                        
                         tx, ty = track['centroid']
-                        dist = np.sqrt((cx - tx)**2 + (cy - ty)**2)
-                        
+                        dist = np.sqrt((cx - tx) ** 2 + (cy - ty) ** 2)
                         if dist < min_dist and dist < MAX_DIST:
                             min_dist = dist
                             best_match_id = t_id
-                    
+
                     if best_match_id is not None:
-                        # Update existing track
                         active_tracks[best_match_id]['history'].append(data['probs'])
                         active_tracks[best_match_id]['centroid'] = (cx, cy)
                         active_tracks[best_match_id]['last_seen'] = now
                         used_track_ids.add(best_match_id)
-                        final_probs = torch.mean(torch.stack(list(active_tracks[best_match_id]['history'])), dim=0)
+                        final_probs = torch.mean(
+                            torch.stack(list(active_tracks[best_match_id]['history'])), dim=0
+                        )
                     else:
-                        # New track
                         new_id = next_track_id
                         next_track_id += 1
                         history = deque(maxlen=3)
                         history.append(data['probs'])
-                        
                         active_tracks[new_id] = {
                             'history': history,
                             'centroid': (cx, cy),
-                            'last_seen': now
+                            'last_seen': now,
                         }
                         used_track_ids.add(new_id)
                         final_probs = data['probs']
-                    
-                    # Prepare result for display
+
                     confidence, predicted = torch.max(final_probs, 1)
                     emotion_idx = predicted.item()
                     emotion = CLASSES[emotion_idx]
                     conf_score = confidence.item()
 
                     emoji = EMOJI_MAP.get(emotion, '')
-                    text_str = f"{emotion} ({conf_score*100:.0f}%)"
-                    
+                    text_str = f"{emotion} ({conf_score * 100:.0f}%)"
+
                     cached_results.append({
                         'coords': data['coords'],
                         'emoji': emoji,
@@ -387,56 +375,63 @@ class EmotionDemo:
                         'heatmap': data['heatmap'],
                     })
 
-                # Cleanup old tracks
+                # Cleanup old tracks (>1 s in video time)
                 active_tracks = {
-                    t_id: track 
-                    for t_id, track in active_tracks.items() 
+                    t_id: track
+                    for t_id, track in active_tracks.items()
                     if now - track['last_seen'] < 1.0
                 }
 
-            # Draw cached results
+            # ---------- draw ----------
             if cached_results:
                 for res in cached_results:
                     x1, y1, x2, y2 = res['coords']
 
-                    # Draw XAI heatmap overlay on face region
                     if res['heatmap'] is not None:
                         frame = overlay_heatmap(frame, res['heatmap'], x1, y1, x2, y2, alpha=0.5)
-                    
-                    # Draw Box
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), res['color'], 2)
-                    
-                    # Draw Emoji + Text
+
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), res['color'], self.box_thickness)
+
                     frame = self.draw_complex_text(
-                        frame, 
-                        res['emoji'], 
-                        res['text'], 
-                        x1, 
-                        y1 - 30, 
-                        res['color']
+                        frame, res['emoji'], res['text'], x1, y1 - self.text_offset, res['color']
                     )
 
-            cv2.imshow('Emotion Demo', frame)
+            writer.write(frame)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            frame_idx += 1
+            if frame_idx % 100 == 0:
+                pct = frame_idx / total_frames * 100 if total_frames else 0
+                print(f"  processed {frame_idx}/{total_frames} frames ({pct:.1f}%)")
 
         cap.release()
-        cv2.destroyAllWindows()
+        writer.release()
+        print(f"Done! {frame_idx} frames written to {output_path}")
+
+
+# ---------------------------------------------------------------------------
+#  CLI
+# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Emotion Classification Demo")
-    parser.add_argument("--checkpoint", type=str, default=MODEL_CHECKPOINT_PATH_RESNET18, help="Path to the model checkpoint file. Defaults to bundled ResNet18 checkpoint.")
-    parser.add_argument("--xai", type=str, choices=["gradcam", "ig", "none"], default="none",
-                        help="XAI overlay method: gradcam, ig (integrated gradients), or none (default).")
-    
-    args = parser.parse_args()
-    
-    # Simple instantiation without model_type
-    if args.checkpoint:
-        demo = EmotionDemo(checkpoint_path=args.checkpoint, xai_method=args.xai)
-    else:
-        # Fallback to default path constant
-        demo = EmotionDemo(checkpoint_path=MODEL_CHECKPOINT_PATH_RESNET18, xai_method=args.xai)
+    parser = argparse.ArgumentParser(
+        description="Process a video file — classify emotions with XAI overlay and save the result."
+    )
+    parser.add_argument("input", type=str, help="Path to the input video file.")
+    parser.add_argument("--output", type=str, default=None,
+                        help="Path for the output video (default: XAI_<input>.<ext>).")
+    parser.add_argument("--checkpoint", type=str, default=MODEL_CHECKPOINT_PATH_RESNET18,
+                        help="Path to the model checkpoint.")
+    parser.add_argument("--xai", type=str, choices=["gradcam", "ig", "none"], default="gradcam",
+                        help="XAI method: gradcam (default), ig, or none.")
 
-    demo.run()
+    args = parser.parse_args()
+
+    # Build default output path if not given
+    if args.output is None:
+        dir_name = os.path.dirname(args.input)
+        base_name = os.path.basename(args.input)
+        name, ext = os.path.splitext(base_name)
+        args.output = os.path.join(dir_name, f"XAI_{name}{ext}")
+
+    processor = VideoProcessor(checkpoint_path=args.checkpoint, xai_method=args.xai)
+    processor.process(args.input, args.output)
