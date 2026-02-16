@@ -4,6 +4,9 @@ import random
 from pathlib import Path
 from tqdm import tqdm
 
+from LoadAllData import ImageLoader
+from image_duplicates import RemoveDuplicates
+
 # Allowed labels (lowercase for case-insensitive matching)
 ALLOWED_LABELS = {
     "happiness",
@@ -12,6 +15,14 @@ ALLOWED_LABELS = {
     "anger",
     "disgust",
     "fear"
+}
+
+LABEL_ALIASES = {
+    "happy": "happiness",
+    "angry": "anger",
+    "sad": "sadness",
+    "disgusted": "disgust",
+    "fearful": "fear"
 }
 
 def get_emotion_from_path(path: Path) -> str | None:
@@ -28,6 +39,9 @@ def get_emotion_from_path(path: Path) -> str | None:
         label = part.lower()
         if label in ALLOWED_LABELS:
             return label
+        
+        if label in LABEL_ALIASES:
+            return LABEL_ALIASES[label]
             
     return None
 
@@ -53,7 +67,7 @@ def process_datasets(input_root_dir: str, output_root_dir: str):
         images_by_emotion = {emotion: [] for emotion in ALLOWED_LABELS}
         
         # Gather all files recursively
-        all_files = [p for p in dataset_dir.rglob("*") if p.is_file() and p.suffix.lower() in {'.jpg', '.jpeg', '.png', '.bmp'}]
+        all_files = [p for p in dataset_dir.rglob("*") if p.is_file() and p.suffix.lower() in {'.jpg', '.jpeg', '.png', '.bmp', '.tiff'}]
         
         print(f"  Found {len(all_files)} potential image files.")
         
@@ -121,8 +135,8 @@ def process_datasets(input_root_dir: str, output_root_dir: str):
     print(f"\nProcessing complete. Output saved to: {output_root}")
 
 if __name__ == "__main__":
-    # You can configure these paths
-    INPUT_DIR = r"D:\3thSemester\DLCVProject\EmotionClassifier\preprocessed_dataset"
-    OUTPUT_DIR = r"D:\3thSemester\DLCVProject\EmotionClassifier\ready_to_use_datasets"
+    HOME_DIR = os.path.expanduser("~")
+    INPUT_DIR = os.path.join(HOME_DIR, "work", "EmotionClassifier", "new_preprocessed_dataset")
+    OUTPUT_DIR = os.path.join(HOME_DIR, "work", "EmotionClassifier", "latest_2_0_ready_to_use_datasets")
     
     process_datasets(INPUT_DIR, OUTPUT_DIR)
