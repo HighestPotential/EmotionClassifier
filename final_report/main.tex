@@ -1,5 +1,6 @@
 \documentclass[10pt, letterpaper, twocolumn]{article}
 \usepackage[final]{cvpr}
+\usepackage{hyperref} % CHANGED: Added the hyperref package to satisfy the cvpr final mode requirements
 
 \input{preamble.tex}
 
@@ -19,6 +20,7 @@ Daniel Pfefferkorn\\
 
 {
     \small
+    \nocite{*} % CHANGED: Included nocite to force BibTeX to process the bibliography without inline citations
     \bibliographystyle{ieeenat_fullname}
     \bibliography{references}
 }
