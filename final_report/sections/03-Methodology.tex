@@ -1,0 +1,87 @@
+\section{Methodology}
+
+This section describes our approach to emotion classification from facial images. Our pipeline consists of three main components: data preprocessing, model architecture, and training strategy.
+
+\subsection{Dataset Collection and Curation}
+
+To ensure reliable and comparable results, we selected four widely used benchmark datasets at the beginning of the project. All datasets contain facial images categorized into six target expressions: anger, disgust, fear, happiness, sadness, and surprise. Initial datasets included:
+
+\begin{itemize}
+    \item \textbf{AffectNet}: 22,629 images (smaller version)
+    \item \textbf{CK+}: 927 images
+    \item \textbf{FER+}: 56,269 images (chosen over FER2013 for improved labelling quality)
+    \item \textbf{RAF-DB}: 12,135 images
+\end{itemize}
+
+These datasets were selected for their diversity in terms of age, ethnicity, and gender, which is essential for improving model generalization capability.
+
+However, after initial training sessions revealed strong overfitting, we expanded our dataset collection by submitting access requests to institutions worldwide. The final corpus comprises \textbf{310,215 facial images} collected from eight datasets: AffectNet, CK+, FER+, RAF-DB, EmoSet, NHFI, JAFFE, MMA-FEDB, and WSEFEP. All datasets were carefully curated and harmonized to match the six target emotion categories.
+
+Several challenges were encountered during dataset collection and curation. Some datasets contained incorrectly labeled samples (statues, cartoon characters, animals assigned to human emotions), while others lacked automation-friendly classification schemes with direct naming logic. Some small datasets were ultimately discarded due to insufficient sample size or poor labeling quality. The datasets exhibit class imbalance, with significantly more happiness images compared to other emotions.
+
+\textbf{Note on CK+ and KDEF}: CK+ follows the Facial Action Coding System (FACS) developed by Paul Ekman and Wallace Friesen, defining facial movements in terms of Action Units (AUs) that correspond to specific muscle activations. KDEF contains high-quality, standardized facial images captured under consistent lighting and pose conditions (resized to 64×64 pixels). These datasets were deliberately excluded from the training set to evaluate generalization capability on unseen data, serving as independent test sets for rigorous cross-dataset evaluation.
+
+\subsection{Data Preprocessing}
+
+We implemented a comprehensive preprocessing pipeline to prepare raw images for training:
+
+\begin{enumerate}
+    \item \textbf{Face Detection and Alignment}: Faces are detected using classical methods and aligned to a canonical pose to ensure consistency across the dataset.
+    
+    \item \textbf{Face Cropping}: Detected face regions are cropped to remove unnecessary background information and focus on facial features.
+    
+    \item \textbf{Image Resizing}: All images are standardized to a consistent resolution to meet model input requirements.
+    
+    \item \textbf{Deduplication}: Duplicate images are identified and removed using perceptual hashing techniques.
+    
+    \item \textbf{Quality Filtering}: Images with poor lighting conditions, excessive blur, or extreme rotations are filtered out to improve dataset quality.
+    
+    \item \textbf{Normalization}: Images are normalized to zero mean and unit variance based on ImageNet statistics.
+\end{enumerate}
+
+\subsection{Model Architecture}
+
+We utilize a ResNet-18 architecture with Squeeze-and-Excitation (SE) attention blocks. The SE blocks recalibrate channel-wise feature responses by explicitly modeling inter-dependencies between channels. The architecture consists of:
+
+\begin{itemize}
+    \item Initial convolutional layer and batch normalization
+    \item Four residual blocks with SE attention modules
+    \item Average pooling and fully connected classification layers
+    \item Seven emotion classes output (Anger, Fear, Happy, Neutral, Sad, Surprise, Disgust)
+\end{itemize}
+
+The model is initialized with ImageNet pre-trained weights and fine-tuned on emotion classification datasets.
+
+\subsection{Training Strategy}
+
+\subsubsection{Loss Function}
+
+We employ a Class-Balanced Focal Loss to address class imbalance common in emotion datasets. The focal loss is defined as:
+
+\begin{equation}
+FL(p_t) = -\alpha_t (1-p_t)^{\gamma} \log(p_t)
+\end{equation}
+
+where $\gamma$ is the focusing parameter that down-weights easy examples, and $\alpha_t$ provides class balance weights.
+
+\subsubsection{Optimization}
+
+We use Stochastic Gradient Descent (SGD) with momentum for model optimization. Learning rate schedules with warm-up and decay are employed to stabilize training.
+
+\subsubsection{Regularization}
+
+Standard regularization techniques are applied:
+\begin{itemize}
+    \item Weight decay (L2 regularization)
+    \item Dropout layers after residual blocks
+    \item Data augmentation (random rotations, flips, brightness adjustments)
+\end{itemize}
+
+\subsection{Evaluation Metrics}
+
+We evaluate model performance using:
+\begin{itemize}
+    \item Overall accuracy
+    \item Per-class precision, recall, and F1-score
+    \item Confusion matrices for error analysis
+\end{itemize}
