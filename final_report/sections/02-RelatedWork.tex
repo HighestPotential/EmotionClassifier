@@ -1,30 +1,15 @@
 \section{Related Work}
+\label{sec:related}
 
-Emotion classification from facial expressions is a well-established problem in computer vision and has been extensively studied over the past decades. This section reviews relevant work in facial emotion recognition, deep learning approaches for face analysis, and recent advancements in transformer-based architectures.
+\subsection{Efficient Architectures and Low-Resolution Vision}
+The evolution of computer vision architectures has largely been driven by the quest for efficiency and scalability. Tan and Le introduced \textbf{EfficientNetV2} \cite{tan2021efficientnetv2smallermodelsfaster}, highlighting the importance of training speed and parameter efficiency through the use of Fused-MBConv layers. While highly effective on ImageNet, standard CNNs often struggle with information loss when applied to small inputs. Addressing this, Hassani et al. proposed \textbf{Compact Convolutional Transformers (CCT)} \cite{hassani2022escapingbigdataparadigm}, demonstrating that transformers can escape the ``big data paradigm'' by using convolutional tokenizers to handle small datasets effectively. Similarly, modern pure ConvNets like \textbf{ConvNeXt V2} \cite{woo2023convnextv2codesigningscaling} utilize fully convolutional masked autoencoders to improve representation learning. More recently, \textbf{Vision Mamba (Vim)} \cite{zhu2024visionmambaefficientvisual} challenged the transformer dominance by utilizing bidirectional State Space Models (SSMs) for linear complexity scaling, offering a computationally efficient alternative for visual representation. Our work evaluates these state-of-the-art architectures, adapting their downsampling strategies to the constraints of $64 \times 64$ facial expression recognition (FER).
 
-\subsection{Facial Emotion Recognition}
+\subsection{Transfer Learning in Facial Analysis}
+While generic object recognition models provide a strong baseline, FER benefits significantly from domain-specific pre-training. Transfer learning from massive face recognition datasets (e.g., CelebA, MS-Celeb-1M) is a standard practice to overcome the data scarcity in emotion recognition. Research indicates that models pre-trained on millions of faces learn robust, identity-invariant features that are highly transferable. Wang et al. demonstrated this in their \textbf{QCS (Quadruplet Cross Similarity)} network \cite{wang2025qcsfeaturerefiningquadruplet}, utilizing an InsightFace ResNet-50 (IR50) backbone pre-trained on MS-Celeb-1M to extract fine-grained facial features. Inspired by their finding that pre-trained FR backbones provide superior initialization, we adopt the IR50 weights from their repository as a starting point. However, we address a critical limitation: the massive classification heads designed for thousands of identities lead to rapid overfitting on smaller emotion datasets. We propose replacing these heavy heads with lightweight, attention-based mechanisms to preserve spatial information without parameter bloat.
 
-Early approaches to facial emotion recognition relied on hand-crafted features and classical machine learning methods. Traditional methods used features such as Local Binary Patterns (LBP), Histogram of Oriented Gradients (HOG), and geometric feature extraction, combined with classifiers like Support Vector Machines (SVM) or Random Forests.
-
-With the advancement of deep learning, Convolutional Neural Networks (CNNs) have become the dominant approach for facial expression recognition. Pre-trained models on large-scale datasets like ImageNet have shown strong performance when fine-tuned for emotion classification tasks.
-
-\subsection{Deep Learning for Facial Analysis}
-
-Recent work has demonstrated the effectiveness of deep neural networks for facial analysis tasks. ResNet, VGG, and Inception architectures have been widely adopted and adapted for emotion recognition. Attention mechanisms and squeeze-and-excitation blocks have further improved model performance by allowing networks to focus on informative facial regions.
-
-\subsection{Transformer Architectures}
-
-Vision Transformers (ViT) and Compact Transformers represent recent advancements in visual representation learning. These architectures have shown promising results across various computer vision tasks, including facial analysis. Compact Transformers offer computational efficiency compared to standard transformers while maintaining competitive performance.
-
-\subsection{Datasets and Benchmarks}
-
-Several publicly available datasets have been instrumental in advancing facial emotion recognition research, including:
+\subsection{Optimization and Generalization Techniques}
+Training deep networks on heterogeneous, imbalanced datasets requires specialized optimization strategies to ensure convergence and generalization. 
 \begin{itemize}
-    \item CK+ (Extended Cohn-Kanade Database)
-    \item FERPlus (Facial Expression Recognition in the wild)
-    \item AffectNet
-    \item RAF-DB (Real-world Affective Faces Database)
-    \item ExpW (Facial Expression in-the-wild)
+    \item \textbf{Warm-up and Learning Rate Schedules:} As demonstrated by Goyal et al. \cite{goyal2018accuratelargeminibatchsgd}, utilizing a learning rate warm-up period is critical for stabilizing training, particularly when using large minibatches. This technique prevents the model from diverging due to large gradient updates during the initial epochs when weights are random.
+    \item \textbf{Sharpness-Aware Minimization (SAM):} Standard optimizers like AdamW focus solely on minimizing the training loss value. Foret et al. introduced \textbf{SAM} \cite{foret2021sharpnessawareminimizationefficientlyimproving}, which simultaneously minimizes loss value and loss sharpness. By seeking parameters that lie in ``flat minima,'' SAM significantly improves generalization performance on out-of-distribution data, a crucial property for our multi-source dataset that includes both lab-controlled and in-the-wild images.
 \end{itemize}
-
-These datasets vary in terms of image quality, diversity of subjects, and annotation protocols, providing different challenges for model development and evaluation.
