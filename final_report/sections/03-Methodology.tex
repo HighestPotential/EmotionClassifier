@@ -64,6 +64,8 @@ Towards the end of the project, we adopted a 90\%/10\% split strategy in most ex
 
 \subsection{Architectural Adaptations}
 
+To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial 7×7 convolution was replaced with a 3×3 kernel and the input resolution was reduced from 224×224 to 64×64. 
+
 \subsubsection{Transfer Learning (IR50)}
 We wanted to try bigger models for our project. However, we did not have enough data to train a large model from zero. Transfer learning allowed us to test how this method works in our specific case and opened the possibility to use a larger architecture. A positive side effect was that the pre-trained model (InsightFace ResNet-50) had already learned facial features from a massive dataset of one million images (Ms-Celeb-1M) \cite{wang2025qcsfeaturerefiningquadruplet}.
 
