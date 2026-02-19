@@ -12,6 +12,7 @@ import torchvision.transforms as transforms
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
+from captum.attr import IntegratedGradients
 
 from aleks_resnet18_se import ResNet18SE
 from retinaface import RetinaFace
@@ -26,7 +27,6 @@ class ModelContext:
     device: torch.device
     classifier: nn.Softmax
     transform: transforms.Compose
-    saliency_fn: Callable[[GradCAM, torch.Tensor, int], np.ndarray]
 
 @dataclass
 class VideoContext:
@@ -68,13 +68,11 @@ def genModelContext():
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
 
-    saliency_fn = genGradCAM
-
     return ModelContext(model=model,
                  device=device,
                  classifier=softmax,
-                 transform=transform,
-                 saliency_fn=saliency_fn)
+                 transform=transform
+                )
 
 def contextCleanup(ctx: VideoContext):
     ctx.input.release()
@@ -92,12 +90,23 @@ def genGradCAM(cam: GradCAM, frame: torch.Tensor, label: int) -> np.ndarray:
     overlay = show_cam_on_image(img=img, mask=result[0], use_rgb=False, image_weight=0.8)
     return overlay
 
-def main(videoCtx: VideoContext, modelCtx: ModelContext, avgIters: int = 5):
+def genIG(ctx: ModelContext, frame: torch.Tensor, label: int) -> np.ndarray:
+
+    baseline = torch.zeros_like(frame)
+
+    ig = IntegratedGradients(ctx.model)
+    attr, _ = ig.attribute(inputs=frame, baselines=baseline, target=label, return_convergence_delta=True)
+    
+    attr = attr.squeeze(dim=0)
+    frame = frame.squeeze(dim=0)
+
+    
+
+
+def main(videoCtx: VideoContext, modelCtx: ModelContext, saliency_fn: Callable, avgIters: int = 5):
     iteration = 0
     previousEmotion = ""
     accumulator = 0
-
-    cam = GradCAM(model=modelCtx.model, target_layers=[modelCtx.model.layer3[-1]])
 
     while True:
         iteration = iteration % avgIters
@@ -132,9 +141,7 @@ def main(videoCtx: VideoContext, modelCtx: ModelContext, avgIters: int = 5):
                 printScore = confidence.item()
                 accumulator = confidence.item()
 
-            heatMap = modelCtx.saliency_fn(cam=cam,
-                                           frame=inputImg,
-                                           label=idx)
+            heatMap = saliency_fn(inputImg, idx)
             
             crop_h, crop_w = originalCrop.shape[:2]
             heatMap = cv.resize(heatMap, (crop_w, crop_h))
@@ -155,6 +162,7 @@ if __name__ == "__main__":
                                      )
     parser.add_argument("filename", help="filepath of the video to process")
     parser.add_argument("-of", help="output path", default="./result.mp4", required=False)
+    parser.add_argument("-cam", help="Use GradCAM instead of Integrated gradients for XAI", action="store_true")
 
     args = parser.parse_args()
     
@@ -164,5 +172,7 @@ if __name__ == "__main__":
 
     vid: VideoContext = genVideoContext(inFile, outFile, codec)
     mod: ModelContext = genModelContext()
+
+    saliency_fn = lambda x, y: genGradCAM(GradCAM(mod.model, [mod.model.layer3[-1]]), x, y) if args.cam else lambda x, y: genIG(mod, x, y)
    
-    main(vid, mod)
+    main(vid, mod, saliency_fn)
