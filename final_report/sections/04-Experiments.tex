@@ -1,6 +1,10 @@
 \section{Experiments and Results}
 \label{sec:experiments}
 
+
+\subsection{Basic CNN and ResNet18}
+The performance of ReLU and LeakyReLU activation functions was systematically evaluated, with LeakyReLU demonstrating superior overall accuracy. Optimization strategies included Stochastic Gradient Descent (with standard hyperparameters), Adam (with learning rate set as 0.001), and AdamW were tested and  Adam with a learning rate of 0.001 yielded the best performance across both the shallow CNN architectures and the modified ResNet-18. Further improvements were achieved through the integration of Batch Normalization, Dropout regularization, and late-stage global average pooling, which enhanced feature stability, mitigated overfitting, and preserved high-level spatial representations relevant to emotion classification.
+
 \subsection{Transfer Learning (IR50)}
 
 \textbf{Version 1: Original Full Fine-Tuning}
