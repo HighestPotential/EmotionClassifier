@@ -1,6 +1,11 @@
 \section{Experiments and Results}
 \label{sec:experiments}
 
+\subsection{ResNet18+SE Ablation: Optimizer and Loss (Aleks)}
+To measure the effect of optimizer choice and loss function while keeping the architecture fixed, we trained the same ResNet18+SE model under four configurations: (1) AdamW + class-balanced focal loss, (2) AdamW + weighted cross-entropy, (3) SGD + class-balanced focal loss, and (4) SGD + weighted cross-entropy. All runs used the same input resolution ($64 \times 64$), the same augmentation setup, and the same training duration. The validation performance curves are shown in Fig.~\ref{fig:aleks_ablation}.
+
+Across the four settings, SGD with class-balanced focal loss achieved the strongest validation performance. One likely reason is that AdamW can converge quickly early on, but with noisy and heterogeneous FER data it can also lead to solutions that generalize less well. In addition, class-balanced focal loss tends to be more robust for strong imbalance than weighted cross-entropy because it continues to emphasize hard and minority-class examples later in training \cite{lin2017focal,cui2019classbalanced}. In the final pipeline, imbalance is therefore handled mainly through the loss formulation rather than through sampling-based balancing.
+
 \subsection{Transfer Learning (IR50)}
 
 \textbf{Version 1: Original Full Fine-Tuning}
