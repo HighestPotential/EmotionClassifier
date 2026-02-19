@@ -2,6 +2,7 @@
 __pycache__/
 *.py[codz]
 *$py.class
+*.pth
 
 # C extensions
 *.so
@@ -531,3 +532,11 @@ TSWLatexianTemp*
 
 # xwatermark package
 *.xwm
+
+# --- Ignored Datasets & Large Data Folders ---
+datasets/
+latest_2_0_ready_to_use_datasets/
+new_datasets/
+new_preprocessed_dataset/
+preprocessed_dataset/
+ready_to_use_datasets/

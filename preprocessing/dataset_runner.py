@@ -1,14 +1,16 @@
 from pathlib import Path
 import cv2
 import numpy as np
+from tqdm import tqdm
 from pipeline import Pipeline
 from skip_image import SkipImage  
 
-EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".webp"}
+EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tiff"}
 
 def collect_images(root: Path, max_files: int | None = None) -> list[Path]:
     """
     Recursively collects image paths from the directory tree, filtering by extension.
+    Skips any files in the FER2013 folder.
 
     Args:
         root (Path): The root directory to start searching from.
@@ -18,11 +20,18 @@ def collect_images(root: Path, max_files: int | None = None) -> list[Path]:
         list[Path]: A list of Path objects for all found images.
     """
     paths = []
+    # Allowed datasets
+    valid_datasets = {
+        "KDEFFormated"
+    }
+
     for p in root.rglob("*"):
-        if p.is_file() and p.suffix.lower() in EXTS:
-            paths.append(p)
-            if max_files is not None and len(paths) >= max_files:
-                break
+        # Check if any of the valid dataset names are invalid the path parts
+        if any(ds in p.parts for ds in valid_datasets):
+            if p.is_file() and p.suffix.lower() in EXTS:
+                paths.append(p)
+                if max_files is not None and len(paths) >= max_files:
+                    break
     return paths
 
 def filter_rate(pipe: Pipeline, input_dir: str, n: int = 2000):
@@ -46,7 +55,7 @@ def filter_rate(pipe: Pipeline, input_dir: str, n: int = 2000):
     pct = (filtered / total * 100) if total else 0.0
     return {"total": total, "kept": kept, "filtered": filtered, "pct_filtered": pct, "read_failed": failed}
 
-def find_dropped(pipe: Pipeline, input_dir: str, max_scan: int = 50000, max_keep: int = 10, log_every: int = 500):
+def find_dropped(pipe: Pipeline, input_dir: str, max_scan: int = 5000000000, max_keep: int = 10, log_every: int = 500):
     root = Path(input_dir)
     paths = collect_images(root, max_files=max_scan)
 
@@ -96,9 +105,9 @@ def run_folder(pipe: Pipeline, input_dir: str, output_dir: str, keep_structure: 
     paths = collect_images(in_root, max_files=max_files)
 
     total = saved = filtered = failed = 0
-    for idx, p in enumerate(paths, start=1):
+    for idx, p in enumerate(tqdm(paths, desc="Processing images", unit="img"), start=1):
         if log_every and idx % log_every == 0:
-            print(f"scanned {idx}/{len(paths)} | saved {saved} | filtered {filtered} | failed {failed}")
+            tqdm.write(f"scanned {idx}/{len(paths)} | saved {saved} | filtered {filtered} | failed {failed}")
 
         img = cv2.imread(str(p), cv2.IMREAD_UNCHANGED)
         if img is None:

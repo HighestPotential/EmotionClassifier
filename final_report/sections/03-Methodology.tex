@@ -1,0 +1,84 @@
+\section{Methodology}
+\label{sec:method}
+
+\subsection{Data Pre-Processing Methodology}
+The pre-processing pipeline functions as a sequential execution of image evaluation modules, where images failing specific quality thresholds are programmatically discarded. The evolution of this strategy transitioned from strict curation to selective filtering across two empirical phases.
+
+\textbf{Phase 1: Aggressive Filtering for a Specialized Use Case}
+The primary hypothesis for Phase 1 was that the model would perform optimally if trained exclusively on perfect, high-quality images that mirrored the target demonstration environment (a user looking directly into a high-quality camera). To enforce this pristine standard, the initial pipeline utilized all available filters sequentially:
+\begin{itemize}
+    \item \textbf{Lighting Filter:} Analyzed the mean pixel intensity and standard deviation, discarding images that were excessively dark, overly bright, or lacked sufficient contrast.
+    \item \textbf{Blur Detection:} Assessed image sharpness using frequency analysis via a Fast Fourier Transform (FFT). Images lacking sufficient high-frequency components were rejected.
+    \item \textbf{Roll Correction:} Evaluated the image across four rotational states ($0^{\circ}, 90^{\circ}, 180^{\circ}, 270^{\circ}$), selecting the orientation that yielded the highest face detection confidence.
+    \item \textbf{Yaw Filtering:} RetinaFace detected the face, and 6DRepNet predicted the 3D pose. To guarantee a strict frontal viewpoint, any image with a yaw angle exceeding $45^{\circ}$ was discarded.
+    \item \textbf{Conditional Cropping:} If the ratio of the face area to the total image area was less than $0.4$, indicating a small face with significant background, the image was cropped with proportional padding; otherwise, the original image was retained.
+\end{itemize}
+In Phase 1, we retained approximately 91,960 images after aggressive filtering.
+
+\textbf{Phase 2: Resolving the Augmentation Contradiction}
+The aggressively filtered dataset from Phase 1 caused the models to overfit rapidly. To combat this, data augmentation techniques were applied (adding artificial noise, altering brightness, introducing artificial blur, and utilizing MixUp).
+
+This sequence exposed a fundamental contradiction: we were actively removing naturally difficult images during the pre-processing stage, only to artificially recreate those exact conditions during the augmentation stage. Furthermore, augmentations like MixUp produce overlapping visual structures that standard face detectors completely fail to recognize, meaning such images would be universally rejected by strict filters. Recognizing that the model required this data variance to generalize, Phase 2 drastically reduced the aggression of the filtering pipeline:
+\begin{itemize}
+    \item \textbf{Reduced Aggression:} The universal application of blur, yaw, roll, and lighting filters was halted. For high-quality datasets (AffectNet, CKplus, FERPlus, RAF-DB), the pipeline was stripped down to utilize only structural standardization.
+    \item \textbf{Selective Cleaning:} Aggressive techniques were retained only for uncleaned, chaotic datasets (e.g., ExpW and EmoSet), which utilized the cropping module, face detection validation, and manual exclusion of specific emotion labels.
+\end{itemize}
+In Phase 2, we started with 310,215 images. After selective pre-processing, we retained 229,478 images.
+
+\textbf{Standardization and Deduplication}
+To finalize the datasets, all images underwent structural standardization:
+\begin{itemize}
+    \item \textbf{Channel Normalization:} All inputs were converted to a 3-channel RGB format to ensure consistent tensor depth.
+    \item \textbf{Resizing:} Images were zero-padded to achieve a square aspect ratio and subsequently resized to exactly $64 \times 64$ pixels. We utilized cubic interpolation if the original image was smaller than $64 \times 64$.
+    \item \textbf{Deduplication:} Duplicate or highly similar images were purged using a combination of perceptual hashing (pHash) and difference hashing (dHash) to ensure strict separation between training and validation distributions.
+\end{itemize}
+
+\textbf{Dataset Splitting}
+At the beginning, we followed an 80\%/10\%/10\% split strategy, where 80\% of the data was used for training, 10\% for validation, and 10\% for testing.
+Towards the end of the project, we adopted a 90\%/10\% split strategy in most experiments. The training set comprised 90\% of the data, while 10\% was reserved for validation (evaluation). For the final test set, we exclusively utilized two specific high-quality datasets: CK+ and KDEF. This rigorous separation ensured that our final performance metrics reflected true generalization on standardized benchmarks.
+
+\subsection{Architectural Adaptations}
+
+\subsubsection{Transfer Learning (IR50)}
+We wanted to try bigger models for our project. However, we did not have enough data to train a large model from zero. Transfer learning allowed us to test how this method works in our specific case and opened the possibility to use a larger architecture. A positive side effect was that the pre-trained model (InsightFace ResNet-50) had already learned facial features from a massive dataset of one million images (Ms-Celeb-1M) \cite{wang2025qcsfeaturerefiningquadruplet}.
+
+The adaptation occurred in three steps:
+
+\textbf{Version 1: Original Full Fine-Tuning}
+The first test used the entire IR50 architecture, including the original classification head.
+\begin{itemize}
+    \item \textbf{The Problem:} The original head flattened the spatial grid into a 25,088-dimensional vector and sent it into a massive linear layer. This single layer had 12.8 million random parameters, accounting for almost half of the whole model.
+    \item \textbf{Result:} Training all 27 million parameters on small datasets caused rapid overfitting. The massive linear layer memorized exact spatial positions, and the high learning rate ruined the pre-trained weights.
+\end{itemize}
+
+\textbf{Version 2: Layer Freezing and the Memorization Problem}
+To protect the pre-trained feature extractors, we froze the early layers (\texttt{input\_layer}, \texttt{body1}, \texttt{body2}, and \texttt{body3}), which contain about 9 million parameters.
+\begin{itemize}
+    \item \textbf{Methodology:} We could not freeze the entire backbone because emotion classification requires the network to identify specific facial features that a face recognition model might ignore. Therefore, we kept the final convolutional block (\texttt{body4}) trainable.
+\end{itemize}
+
+\textbf{Version 3: The Light Head Architecture}
+To stop the memorization while keeping \texttt{body4} trainable, we built a new head for the model.
+\begin{itemize}
+    \item \textbf{Methodology:} We removed the 12.8-million-parameter head and replaced it with a ``Light Head'' containing only 795,000 parameters.
+    \item \textbf{Spatial Attention Integration:} Using a standard Global Average Pooling (GAP) layer fixes the parameter problem but destroys spatial information. Human emotions are local, making spatial context critical. We added a Spatial Attention module (Conv1x1 followed by a Sigmoid activation) before the GAP layer. This module learns to give weights to important spatial areas before the GAP layer reduces the dimensions.
+\end{itemize}
+
+\subsubsection{Alternative Architectures}
+During the evaluation phase, three low-parameter architectures were tested to compare different modern deep learning paradigms. Adapting these models for $64 \times 64$ inputs required specific architectural modifications, primarily reducing spatial downsampling.
+
+\begin{itemize}
+    \item \textbf{Vim (Vision Mamba, $\sim$7M parameters):} Vim \cite{zhu2024visionmambaefficientvisual} was chosen because it is a novel model challenging standard Transformers by utilizing bidirectional State Space Models (SSMs), promising exceptionally low GPU memory usage. To adapt it for $64 \times 64$ images, the patch size was changed from $16 \times 16$ to $8 \times 8$ to provide a functional sequence length of 64 tokens.
+    \item \textbf{CCT-7 (Compact Convolutional Transformer, $\sim$4M parameters):} CCT-7 \cite{hassani2022escapingbigdataparadigm} was selected to test a small Transformer specifically designed to handle small images by using a convolutional tokenizer instead of linear patch embeddings.
+    \item \textbf{ConvNeXt V2 Atto ($\sim$3.7M parameters):} This model \cite{woo2023convnextv2codesigningscaling} was chosen to evaluate how a state-of-the-art pure Convolutional Neural Network operates in a constrained parameter regime. The original architecture features a stem convolution with a stride of 4. For a $64 \times 64$ image, this immediately shrinks the feature map to $16 \times 16$. The stem stride was explicitly changed to 1 to preserve spatial information.
+\end{itemize}
+
+\subsubsection{EfficientNetV2-S Adaptations}
+EfficientNetV2-S \cite{tan2021efficientnetv2smallermodelsfaster} was selected for its MBConv blocks and Squeeze-and-Excitation (SE) attention, which effectively amplify emotional markers like micro-expressions while suppressing background noise.
+
+\textbf{Architectural and Augmentation Adaptations}
+To process $64 \times 64$ images effectively, two major pipeline adjustments were executed:
+\begin{itemize}
+    \item \textbf{Stem Stride Fix:} The original stem stride of 2 was reduced to 1. This modification preserved the full spatial resolution through the initial layers, preventing the immediate loss of fine facial details.
+    \item \textbf{Minimized Destructive Augmentation:} Initial training with standard ImageNet settings (Mixup $\alpha=0.8$) obliterated facial features. We implemented a low-interference pipeline to minimize data destruction while maintaining regularization. This included reducing Mixup to 0.2, limiting CutMix to a maximum of 0.3, and using gentle affine transformations. This ensured that while the model was forced to reconstruct features, the core emotional signal remained intact.
+\end{itemize}
