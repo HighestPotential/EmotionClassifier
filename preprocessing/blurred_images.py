@@ -49,4 +49,3 @@ class RemoveBlurredFaces(ImageProcessor):
              raise SkipImage(f"Image is blurry (FFT score={mean_magnitude:.2f} < {threshold})")
 
         return image
-        return cleaned_images, cleaned_labels

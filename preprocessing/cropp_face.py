@@ -9,14 +9,15 @@ class CroppingFace(ImageProcessor):
     """
     A class that detects and crops the human face using RetinaFace.
     """
-    def __init__(self, confidence_threshold: float = 0.5):
+    def __init__(self, confidence_threshold: float = 0.5, threshold_area: float = 0.4):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.confidence_threshold = confidence_threshold
+        self.threshold_area = threshold_area
         
         # Initialize detector
         self.detector = RetinaFace(gpu_id=0 if self.device == 'cuda' else -1)
         
-    def process(self, image: np.ndarray, threshold: float = 0.2) -> np.ndarray:
+    def process(self, image: np.ndarray) -> np.ndarray:
         """
         :param threshold: The ratio (face_area / img_area) below which cropping occurs.
         """
@@ -65,10 +66,11 @@ class CroppingFace(ImageProcessor):
 
             face_ratio = max_face_area / img_area
 
-            # Padding logic (20%)
-            padding_ratio = 0.2  
-            pad_w = int(w_raw * padding_ratio) 
-            pad_h = int(h_raw * padding_ratio) 
+            # Padding logic
+            padding_ratio_w = 0.4
+            padding_ratio_h = 0.2  
+            pad_w = int(w_raw * padding_ratio_w) 
+            pad_h = int(h_raw * padding_ratio_h) 
 
             # Apply padding to coordinates
             new_x1 = max(0, x1 - pad_w)
@@ -80,7 +82,7 @@ class CroppingFace(ImageProcessor):
             new_h = new_y2 - new_y1
             
             # Check if the face is small enough to warrant cropping
-            if face_ratio < threshold:
+            if face_ratio < self.threshold_area:
                 if new_w <= 0 or new_h <= 0:
                     raise SkipImage("Calculated crop dimensions are invalid")
                 

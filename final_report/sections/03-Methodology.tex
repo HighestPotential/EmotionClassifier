@@ -1,6 +1,28 @@
 \section{Methodology}
 \label{sec:method}
 
+\subsection{Datasets}
+
+To ensure reliable and comparable results, four widely used benchmark datasets from the literature were selected at the beginning of this study. All datasets contain facial images categorized into the six target expressions: anger, disgust, fear, happiness, sadness, and surprise. The datasets employed were a smaller version of AffectNet \cite{affectnet} (22,629 images), CK+ \cite{ckplus}  (927 images), FER+ \cite{ferplus} (56,269 images), and RAF-DB \cite{rafdb} (12,135 images).
+
+FER+ was chosen instead of the original FER2013 due to its improved labeling quality, which has a direct impact on model performance and reliability. Moreover, the selected datasets provide diversity in terms of age, ethnicity, and gender, which is essential for improving the generalization capability of the models. Although AffectNet, CK+, and FER+ include an additional \textit{contempt} label, this class was excluded from the experiments as it falls outside the scope of the present study. The data includes both grayscale and RGB images. Image formats vary between JPEG and PNG, which does not affect the preprocessing or training pipeline.
+
+After the initial training sessions, the developed models exhibited strong overfitting. To mitigate this issue, additional datasets were sought, and access requests were submitted to multiple institutions worldwide to expand the training data.
+
+At the end of the data collection process, a total of 310,215 facial images were gathered. In addition to the previously mentioned datasets, the final corpus also included images from EmoSet \cite{emoset}, JAFFE \cite{jaffe}, MMA-FEDB \cite{mma}, ExpWild \cite{expw} and WSEFEP \cite{wse-fep}. All datasets were carefully curated and harmonized to match the six target emotion categories used in this study.
+
+Several challenges were encountered during dataset collection and curation. Some datasets contained incorrectly labeled samples, including statues, cartoon characters, or animals assigned to human emotion categories. In other cases, images were organized per subject rather than per emotion category, without consistent naming conventions, which prevented automated separation. Furthermore, some small datasets were ultimately discarded due to insufficient sample size or poor labeling quality.
+
+As illustrated in the preprocessing section, the aggregated datasets are imbalanced, with a significantly higher number of happiness samples compared to the other emotion categories.
+
+\subsection{Cross-Dataset Generalization Strategy}
+
+For the final training phase, CK+ and KDEF \cite{kdef} were deliberately excluded from the training set in order to evaluate the generalization capability of the proposed model on unseen datasets. It is important to emphasize that both datasets are relatively balanced.
+
+KDEF also contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions. Although the images were resized to $64 \times 64$ pixels to meet the architectural requirements of this study, the dataset remains valuable for assessing cross-dataset robustness due to its standardized acquisition setup.
+
+By excluding CK+ and KDEF from training, these datasets served as independent test sets, enabling a more rigorous evaluation of cross-dataset generalization performance.
+
 \subsection{Data Pre-Processing Methodology}
 The pre-processing pipeline functions as a sequential execution of image evaluation modules, where images failing specific quality thresholds are programmatically discarded. The evolution of this strategy transitioned from strict curation to selective filtering across two empirical phases.
 
@@ -25,6 +47,60 @@ This sequence exposed a fundamental contradiction: we were actively removing nat
 \end{itemize}
 In Phase 2, we started with 310,215 images. After selective pre-processing, we retained 229,478 images.
 
+\definecolor{darkblue}{RGB}{52, 73, 102}
+\definecolor{steelblue}{RGB}{100, 130, 160}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    title={\textbf{Number of Images per Emotion After Processing}},
+    ybar,
+    bar width=0.6cm,
+    width=8cm,
+    height=7cm,
+    symbolic x coords={Anger, Disgust, Fear, Happiness, Sadness, Surprise},
+    xtick=data,
+    x tick label style={rotate=30, anchor=east, font=\footnotesize},
+    xlabel={Emotions},
+    ylabel={Number of Images},
+    ymin=0,
+    ymax=100000,
+    ytick={0,20000,40000,60000,80000,100000},
+    scaled y ticks=false, % CHANGED: Disabled automatic scaling to show full integers from 0 to 100000.
+    yticklabel style={/pgf/number format/fixed, /pgf/number format/1000 sep={}},
+    nodes near coords,
+    nodes near coords style={font=\tiny},
+    every node near coord/.append style={
+        /pgf/number format/fixed,
+        /pgf/number format/precision=0
+    },
+    axis background/.style={fill=gray!10},
+    grid=major,
+    grid style={dashed, gray!40},
+    tick align=outside,
+    enlarge x limits=0.15,
+]
+
+\addplot[
+    fill=steelblue,
+    draw=darkblue,
+    thick
+] coordinates {
+    (Anger,    28364)
+    (Disgust,  18191)
+    (Fear,     21141)
+    (Happiness, 91842)
+    (Sadness,  36264)
+    (Surprise, 33676)
+};
+
+\end{axis}
+\end{tikzpicture}
+\caption{Number of Images per Emotion After Processing}
+\label{fig:processed_images_distribution}
+\end{figure}
+
 \textbf{Standardization and Deduplication}
 To finalize the datasets, all images underwent structural standardization:
 \begin{itemize}
@@ -39,7 +115,51 @@ Towards the end of the project, we adopted a 90\%/10\% split strategy in most ex
 
 \subsection{Architectural Adaptations}
 
+\subsection{Basic CNNs and ResNet18 models}
+To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial 7×7 convolution was replaced with a 3×3 kernel and the input resolution was reduced from 224×224 to 64×64. 
+
 \subsubsection{ResNet18 with Squeeze-and-Excitation}
+Our model is based on ResNet18 and is extended with a squeeze-and-excitation (SE) attention module. ResNet18 serves as a stable baseline with moderate capacity (roughly 11--12 million parameters). Results from compact FER literature, including CERN, suggest that attention mechanisms can improve performance across different model sizes, supporting our use of SE as a low-overhead architectural enhancement \cite{gera2022cern}.
+
+The input to our network is a standardized RGB face image of size $64 \times 64$. Since this resolution is much smaller than the typical ImageNet setup ($224 \times 224$), we avoid aggressive downsampling in the first layers. In the original ImageNet ResNet, the stem commonly uses a $7 \times 7$ convolution with stride 2 followed by max pooling with stride 2. On a $64 \times 64$ image, this reduces spatial resolution very early: $64 \times 64$ becomes $32 \times 32$ after the first stride-2 convolution, and then $16 \times 16$ after max pooling, before the main residual stages even begin. This early reduction removes fine-grained facial details (for example small changes around eyes and mouth) that can be important for emotion recognition. The relationship between kernel size, stride, padding, and output resolution follows the standard convolution output sizing rule \cite{cs231n2017}.
+
+For this reason, we use a $3 \times 3$ convolution with stride 1 in the first layer and omit early pooling, so the model preserves more spatial information in the early feature maps. This is also a common modification when ResNet-style models are adapted to small images (e.g., CIFAR-sized inputs), because preserving spatial detail early tends to improve learning on low-resolution inputs.
+
+After the stem, we follow the standard ResNet18 design with four stages of residual blocks and stage-wise downsampling. Residual connections add the block input to the block output, which stabilizes optimization in deep networks \cite{he2016resnet}. After the final stage, global average pooling produces a feature vector that is fed into a dropout-regularized linear classifier to output logits for the six emotion classes.
+
+We augment the ResNet18 backbone with squeeze-and-excitation (SE) blocks, which perform lightweight channel-wise attention by learning per-channel scaling factors from globally pooled features, improving representational capacity with minimal overhead \cite{hu2018senet}. The motivation for using a lightweight attention mechanism is consistent with the goal of improving robustness without greatly increasing model size and is aligned with compact FER approaches such as CERN \cite{gera2022cern}.
+
+\subsubsection{Loss Function and Class Imbalance}
+Class imbalance is handled through the objective function, meaning the loss function that the model minimizes during training. In standard classification, the model is trained by minimizing cross-entropy loss. With imbalanced data, standard cross-entropy can be dominated by majority classes because they appear more frequently and therefore contribute more gradient updates.
+
+To address this, we modify the training objective by using class-balanced focal loss. The class-balanced component assigns larger weights to underrepresented classes using the effective number of samples \cite{cui2019classbalanced}, while the focal component reduces the contribution of well-classified (easy) samples so that the model continues learning from harder examples \cite{lin2017focal}. Therefore, we use standard shuffling and address imbalance through the loss rather than through a \texttt{WeightedRandomSampler}.
+
+\subsubsection{Emotion Prediction Bias and Advanced Loss Functions}
+% CHANGED: Reframed the introduction to highlight the 40% happiness imbalance as a specific challenge of the project's aggregated data, rather than a universal FER problem.
+A significant challenge encountered in our specific training pipeline was the severe class imbalance within our aggregated dataset. Specifically, images labeled as \textit{happiness} constituted approximately 40\% of the total data, while other categories, such as \textit{fear} and \textit{disgust}, were severely underrepresented. We sought to implement robust methods to counteract this inherent bias, which otherwise introduces a fundamental model flaw where the majority class becomes the default, high-confidence prediction, while subtle or rare emotions are ignored.
+
+This phenomenon is driven by two factors:
+\begin{itemize}
+    \item \textbf{Frequency versus Difficulty:} The \textit{happiness} class typically presents distinct visual markers (e.g., a smile) that are easily learned. Conversely, \textit{fear} and \textit{disgust} rely on subtle ocular and brow micro-expressions that degrade heavily at lower resolutions, such as $64 \times 64$ pixels.
+    \item \textbf{Loss Gradients:} Under standard cross-entropy loss, the model minimizes the global objective by maximizing confidence in the frequent, easy classes, functionally neglecting the minority classes.
+\end{itemize}
+
+To combat this bias, we evaluated two advanced loss functions designed for imbalanced image classification. First, we utilized Class-Balanced Focal Loss (CB-FL), which assigns larger weights to underrepresented classes using the effective number of samples and scales the loss based on prediction confidence, forcing the model to focus on hard, misclassified examples \cite{cui2019classbalancedlossbasedeffective}.
+For EfficientNetV2-S, both advanced loss functions were evaluated. For ResNet-18 SE, only Class-Balanced Focal Loss was applied.
+
+Second, we implemented Label-Distribution-Aware Margin Loss (LDAM) coupled with Deferred Re-Weighting (DRW) \cite{cao2019learning}. LDAM modifies the logit outputs by assigning a significantly larger mathematical margin to minority classes. This strictly penalizes the model unless it maintains extreme confidence when predicting rare classes, thereby enforcing wider decision boundaries around them. The DRW strategy schedules the training such that the model trains without artificial weights for the initial epochs to learn robust feature representations. In the final epochs, strict class frequency weights are applied to fine-tune the decision boundaries for the minority classes without corrupting the initial feature learning phase.
+
+\subsection{Explainable AI}
+We use Grad-CAM and Integrated Gradients to visualize which parts of an image influence the model's predictions.
+
+Grad-CAM produces a heatmap by using gradients in a chosen convolutional layer to estimate which spatial regions are important for a prediction, and then upsamples the heatmap to input size \cite{selvaraju2017gradcam}. In our setting, Grad-CAM often appeared coarse because the input images are only $64 \times 64$ and the network downsamples across stages. As a result, the spatial resolution of deep feature maps becomes small (often single-digit spatial dimensions). When a low-resolution heatmap is resized back to $64 \times 64$, it becomes blocky and highlights broad regions rather than precise facial details.
+
+Integrated Gradients produces attributions directly in input space, which makes it better suited for small images \cite{sundararajan2017ig}. In our qualitative comparisons, Integrated Gradients resulted in clearer and more fine-grained explanations that aligned better with facial structures such as the mouth region, eyes, and eyebrows. For this reason, Integrated Gradients was used as the primary explanation method in the final qualitative analysis and in the demo overlays.
+
+To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial 7×7 convolution was replaced with a 3×3 kernel and the input resolution was reduced from 224×224 to 64×64. 
+
+\subsubsection{Transfer Learning (IR50)}
+We wanted to try bigger models for our project. However, we did not have enough data to train a large model from zero. Transfer learning allowed us to test how this method works in our specific case and opened the possibility to use a larger architecture. A positive side effect was that the pre-trained model (InsightFace ResNet-50) had already learned facial features from a massive dataset of one million images (Ms-Celeb-1M) \cite{wang2025qcsfeaturerefiningquadruplet}.
 
 Our model is based on ResNet18 and is extended with a squeeze-and-excitation (SE) attention module. ResNet18 serves as a stable baseline with moderate capacity
 (roughly 11--12 million parameters). Results from compact FER literature, including CERN, suggest that attention mechanisms can improve performance across different
