@@ -87,7 +87,9 @@ def main(input: str, output: str) -> None:
             writer.writerows(outData)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog = "imgAI.py", 
+                                     description="Takes the path to a directory of images and produces a csv file classifying each one"
+)
     parser.add_argument("in_dir", help="Input directory containing images to evaluate")
     parser.add_argument("-of", help="Output csv file", default="./result.csv", required=False)
 

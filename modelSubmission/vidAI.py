@@ -1,6 +1,6 @@
 import argparse
 from dataclasses import dataclass
-from typing import Callable, Union
+from typing import Callable
 
 import cv2 as cv
 import numpy as np
@@ -12,7 +12,7 @@ import torchvision.transforms as transforms
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
-from captum.attr import IntegratedGradients
+from captum.attr import IntegratedGradients, NoiseTunnel
 
 from aleks_resnet18_se import ResNet18SE
 from retinaface import RetinaFace
@@ -20,6 +20,8 @@ from retinaface import RetinaFace
 BLUE = (255, 0, 0)
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
+
+type SaliencyFunction = Callable[[torch.Tensor, int], np.ndarray]
 
 @dataclass
 class ModelContext:
@@ -87,23 +89,41 @@ def genGradCAM(cam: GradCAM, frame: torch.Tensor, label: int) -> np.ndarray:
     img = (img * [0.5, 0.5, 0.5]) + [0.5, 0.5, 0.5]
     img = np.clip(img, 0, 1)
 
-    overlay = show_cam_on_image(img=img, mask=result[0], use_rgb=False, image_weight=0.8)
+    overlay = show_cam_on_image(img=img, mask=result[0], use_rgb=False, image_weight=0.7)
     return overlay
 
-def genIG(ctx: ModelContext, frame: torch.Tensor, label: int) -> np.ndarray:
-
+def genIG(ctx: ModelContext, frame: torch.Tensor, label: int, alpha: float = 0.4) -> np.ndarray:
+    frame = frame.clone().detach().requires_grad_(True)
     baseline = torch.zeros_like(frame)
 
     ig = IntegratedGradients(ctx.model)
-    attr, _ = ig.attribute(inputs=frame, baselines=baseline, target=label, return_convergence_delta=True)
+    attr, _ = ig.attribute(inputs=frame,
+                           baselines=baseline,
+                           target=label,
+                           return_convergence_delta=True,
+                           n_steps=50)
     
-    attr = attr.squeeze(dim=0)
+    attr = attr.abs().sum(dim=0)
     frame = frame.squeeze(dim=0)
 
-    
 
+    data = attr.detach().cpu().numpy().transpose(1, 2, 0)
+    img = frame.detach().cpu().numpy().transpose(1, 2, 0)
+    img = (img * [0.5, 0.5, 0.5]) + [0.5, 0.5, 0.5]
+    img = np.clip(img, 0, 1)
+    img = (img * 255).astype(np.uint8)
 
-def main(videoCtx: VideoContext, modelCtx: ModelContext, saliency_fn: Callable, avgIters: int = 5):
+    normData = data - data.min()
+    normData = normData / (normData.max() + 1e-8)
+    normData = (normData * 255).astype(np.uint8)
+
+    heatmap = cv.applyColorMap(normData, cv.COLORMAP_INFERNO)
+    beta = 1 - alpha
+    overlay = cv.addWeighted(img, alpha, heatmap, beta, 0)
+
+    return overlay.astype(np.uint8)
+
+def main(videoCtx: VideoContext, modelCtx: ModelContext, saliency_fn: SaliencyFunction, avgIters: int = 5):
     iteration = 0
     previousEmotion = ""
     accumulator = 0
@@ -142,7 +162,6 @@ def main(videoCtx: VideoContext, modelCtx: ModelContext, saliency_fn: Callable, 
                 accumulator = confidence.item()
 
             heatMap = saliency_fn(inputImg, idx)
-            
             crop_h, crop_w = originalCrop.shape[:2]
             heatMap = cv.resize(heatMap, (crop_w, crop_h))
             frame[y1:y2, x1:x2] = heatMap
@@ -157,7 +176,7 @@ def main(videoCtx: VideoContext, modelCtx: ModelContext, saliency_fn: Callable, 
     contextCleanup(videoCtx)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog = "Video classifier", 
+    parser = argparse.ArgumentParser(prog = "vidAI.py", 
                                      description="Takes in a video path, classifies the Emotion and adds a saliency map"
                                      )
     parser.add_argument("filename", help="filepath of the video to process")
@@ -173,6 +192,10 @@ if __name__ == "__main__":
     vid: VideoContext = genVideoContext(inFile, outFile, codec)
     mod: ModelContext = genModelContext()
 
-    saliency_fn = lambda x, y: genGradCAM(GradCAM(mod.model, [mod.model.layer3[-1]]), x, y) if args.cam else lambda x, y: genIG(mod, x, y)
+    if args.cam:
+        camInst = GradCAM(mod.model, [mod.model.layer3[-1]])
+        saliency_fn = lambda x, y: genGradCAM(camInst, x, y)
+    else:
+        saliency_fn = lambda x, y: genIG(mod, x, y)
    
     main(vid, mod, saliency_fn)
