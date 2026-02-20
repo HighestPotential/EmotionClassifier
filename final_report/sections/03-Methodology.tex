@@ -19,9 +19,7 @@ As illustrated in the preprocessing section, the aggregated datasets are imbalan
 
 For the final training phase, CK+ and KDEF were deliberately excluded from the training set in order to evaluate the generalization capability of the proposed model on unseen datasets. It is important to emphasize that both datasets are relatively balanced.
 
-CK+ is a well-established dataset focusing on prototypical and micro-expressions, with annotations grounded in the Facial Action Coding System (FACS) developed by Ekman and Friesen~\cite{Ekman1978FACS}. FACS defines facial movements in terms of Action Units (AUs), which correspond to specific underlying muscle activations. The selection of key facial landmarks and their configuration in CK+ follows the FACS framework~\cite{Lucey2010CK}, making it particularly suitable for evaluating models designed to capture fine-grained facial expression dynamics.
-
-KDEF, on the other hand, contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions. Although the images were resized to $64 \times 64$ pixels to meet the architectural requirements of this study, the dataset remains valuable for assessing cross-dataset robustness due to its standardized acquisition setup.
+KDEF also contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions. Although the images were resized to $64 \times 64$ pixels to meet the architectural requirements of this study, the dataset remains valuable for assessing cross-dataset robustness due to its standardized acquisition setup.
 
 By excluding CK+ and KDEF from training, these datasets served as independent test sets, enabling a more rigorous evaluation of cross-dataset generalization performance.
 
@@ -85,6 +83,8 @@ We use Grad-CAM and Integrated Gradients to visualize which parts of an image in
 Grad-CAM produces a heatmap by using gradients in a chosen convolutional layer to estimate which spatial regions are important for a prediction, and then upsamples the heatmap to input size \cite{selvaraju2017gradcam}. In our setting, Grad-CAM often appeared coarse because the input images are only $64 \times 64$ and the network downsamples across stages. As a result, the spatial resolution of deep feature maps becomes small (often single-digit spatial dimensions). When a low-resolution heatmap is resized back to $64 \times 64$, it becomes blocky and highlights broad regions rather than precise facial details.
 
 Integrated Gradients produces attributions directly in input space, which makes it better suited for small images \cite{sundararajan2017ig}. In our qualitative comparisons, Integrated Gradients resulted in clearer and more fine-grained explanations that aligned better with facial structures such as the mouth region, eyes, and eyebrows. For this reason, Integrated Gradients was used as the primary explanation method in the final qualitative analysis and in the demo overlays.
+
+To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial 7×7 convolution was replaced with a 3×3 kernel and the input resolution was reduced from 224×224 to 64×64. 
 
 \subsubsection{Transfer Learning (IR50)}
 We wanted to try bigger models for our project. However, we did not have enough data to train a large model from zero. Transfer learning allowed us to test how this method works in our specific case and opened the possibility to use a larger architecture. A positive side effect was that the pre-trained model (InsightFace ResNet-50) had already learned facial features from a massive dataset of one million images (Ms-Celeb-1M) \cite{wang2025qcsfeaturerefiningquadruplet}.
