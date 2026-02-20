@@ -33,11 +33,30 @@ The first test used the entire IR50 architecture, including the original classif
 \end{itemize}
 
 \subsection{Alternative Architectures Evaluation}
-\begin{itemize}
-    \item \textbf{Vim (Vision Mamba):} However, Vim is fundamentally designed for high-resolution data, and it proved too difficult to make the architecture focus effectively on the fine details of small facial images.
-    \item \textbf{CCT-7 (Compact Convolutional Transformer):} Even though the architecture was perfectly suited for small images, it simply possessed too few parameters to learn the complex features required for human emotion classification.
-    \item \textbf{ConvNeXt V2 Atto:} Similar to CCT-7, the model lacked the parameter count necessary to build robust representations.
-\end{itemize}
+
+During the course of the development process each team member implemented a number of different archtiectures to analyze and compare the performance of different designs.
+The following section will provide a short overview over the most interesting networks and the results.
+
+\subsubsection{Vim (Vision Mamba)}
+
+However, Vim is fundamentally designed for high-resolution data, and it proved too difficult to make the architecture focus effectively on the fine details of small facial images.
+
+\subsubsection{CCT-7 (Compact Convolutional Transformer)}
+
+Even though the architecture was perfectly suited for small images, it simply possessed too few parameters to learn the complex features required for human emotion classification.
+
+\subsubsection{ConvNeXt V2 Atto}
+
+Similar to CCT-7, the model lacked the parameter count necessary to build robust representations.
+
+\subsubsection{GoogLeNet}
+
+The GoogLeNet architecture uses a 
+
+\subsubsection{Other ResNet implementations}
+
+Regarding the high accuracy of the ResNet18 + SE implementation ResNet34 and ResNet50 were also trained and evaluated. However the training process was less efficient since 
+the models started overfitting early on due to the high parameter count. As a result the model evaluation yielded a lower accuracy than the original ResNet18 + SE design.
 
 \subsection{EfficientNetV2-S Optimization Dynamics}
 EfficientNetV2-S ultimately emerged as one of the top two best-performing models across all validation benchmarks. To ensure a rigorous comparison, we empirically optimized and tuned each optimizer to find its stable configuration.
