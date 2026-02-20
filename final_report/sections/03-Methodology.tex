@@ -60,6 +60,10 @@ At the beginning, we followed an 80\%/10\%/10\% split strategy, where 80\% of th
 Towards the end of the project, we adopted a 90\%/10\% split strategy in most experiments. The training set comprised 90\% of the data, while 10\% was reserved for validation (evaluation). For the final test set, we exclusively utilized two specific high-quality datasets: CK+ and KDEF. This rigorous separation ensured that our final performance metrics reflected true generalization on standardized benchmarks.
 
 \subsection{Architectural Adaptations}
+
+\subsection{Basic CNNs and ResNet18 models}
+To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial 7×7 convolution was replaced with a 3×3 kernel and the input resolution was reduced from 224×224 to 64×64. 
+
 \subsubsection{ResNet18 with Squeeze-and-Excitation}
 Our model is based on ResNet18 and is extended with a squeeze-and-excitation (SE) attention module. ResNet18 serves as a stable baseline with moderate capacity (roughly 11--12 million parameters). Results from compact FER literature, including CERN, suggest that attention mechanisms can improve performance across different model sizes, supporting our use of SE as a low-overhead architectural enhancement \cite{gera2022cern}.
 
