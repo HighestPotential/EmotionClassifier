@@ -7,18 +7,10 @@ class Pipeline:
         self.steps = steps
 
     def execute(self, img):
-<<<<<<< HEAD
-        for step in self.steps:
-            try:
-                img = step.process(img)
-            except SkipImage as e: 
-                return None
-        return img
-=======
         try:
             for step in self.steps:
                 img = step.process(img)
             return img
         except SkipImage:
+
             return None
->>>>>>> main

@@ -4,9 +4,6 @@ import random
 from pathlib import Path
 from tqdm import tqdm
 
-from LoadAllData import ImageLoader
-from image_duplicates import RemoveDuplicates
-
 # Allowed labels (lowercase for case-insensitive matching)
 ALLOWED_LABELS = {
     "happiness",
@@ -19,6 +16,9 @@ ALLOWED_LABELS = {
 
 LABEL_ALIASES = {
     "happy": "happiness",
+    "amusement": "happiness",
+    "excitement": "happiness",
+    "contentment": "happiness",
     "angry": "anger",
     "sad": "sadness",
     "disgusted": "disgust",
@@ -136,7 +136,7 @@ def process_datasets(input_root_dir: str, output_root_dir: str):
 
 if __name__ == "__main__":
     HOME_DIR = os.path.expanduser("~")
-    INPUT_DIR = os.path.join(HOME_DIR, "work", "EmotionClassifier", "new_preprocessed_dataset")
-    OUTPUT_DIR = os.path.join(HOME_DIR, "work", "EmotionClassifier", "latest_2_0_ready_to_use_datasets")
+    INPUT_DIR = os.path.join(HOME_DIR, "work", "EmotionClassifier", "preprocessed_dataset")
+    OUTPUT_DIR = os.path.join(HOME_DIR, "work", "EmotionClassifier", "latest_3_0_ready_to_use_datasets")
     
     process_datasets(INPUT_DIR, OUTPUT_DIR)

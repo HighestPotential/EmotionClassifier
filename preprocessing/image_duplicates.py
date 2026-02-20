@@ -91,6 +91,9 @@ class RemoveDuplicates(ImageProcessor):
         hashes = np.zeros(n)
         mask = np.ones(n, dtype=bool)
 
+        cleaned_images = image.copy()
+
+
         for i, img in enumerate(image):
             hashes[i] = self._difference_hash(img)
         
@@ -106,5 +109,7 @@ class RemoveDuplicates(ImageProcessor):
 
             diff = abs(h - hashes[idx:])
             mask[idx:] &= diff > min_distance
+
+        cleaned_images = cleaned_images[mask]
         
-        return mask
+        return cleaned_images

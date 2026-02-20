@@ -1,0 +1,3 @@
+Epoch,LR,Train Loss,Global Val Acc,AffectNet Acc,EmoSet-118k Acc,ExpWFormated Acc,FERPlus Acc,MMAFEDB Acc,NHFI Acc,RAF-DB Acc,jaffeFormated Acc
+1,1e-06,2.2137,16.47,17.26,10.72,17.47,18.99,16.39,18.75,17.52,23.53
+2,0.00020080000000000003,2.1074,14.80,16.73,9.23,9.15,18.05,16.09,13.54,16.69,17.65
