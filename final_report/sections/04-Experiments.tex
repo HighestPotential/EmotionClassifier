@@ -33,11 +33,30 @@ The first test used the entire IR50 architecture, including the original classif
 \end{itemize}
 
 \subsection{Alternative Architectures Evaluation}
-\begin{itemize}
-    \item \textbf{Vim (Vision Mamba):} However, Vim is fundamentally designed for high-resolution data, and it proved too difficult to make the architecture focus effectively on the fine details of small facial images.
-    \item \textbf{CCT-7 (Compact Convolutional Transformer):} Even though the architecture was perfectly suited for small images, it simply possessed too few parameters to learn the complex features required for human emotion classification.
-    \item \textbf{ConvNeXt V2 Atto:} Similar to CCT-7, the model lacked the parameter count necessary to build robust representations.
-\end{itemize}
+
+During the course of the development process each team member implemented a number of different archtiectures to analyze and compare the performance of different designs.
+The following section will provide a short overview over the most interesting networks and the results.
+
+\subsubsection{Vim (Vision Mamba)}
+
+However, Vim is fundamentally designed for high-resolution data, and it proved too difficult to make the architecture focus effectively on the fine details of small facial images.
+
+\subsubsection{CCT-7 (Compact Convolutional Transformer)}
+
+Even though the architecture was perfectly suited for small images, it simply possessed too few parameters to learn the complex features required for human emotion classification.
+
+\subsubsection{ConvNeXt V2 Atto}
+
+Similar to CCT-7, the model lacked the parameter count necessary to build robust representations.
+
+\subsubsection{GoogLeNet}
+
+The GoogLeNet architecture uses a 
+
+\subsubsection{Other ResNet implementations}
+
+Regarding the high accuracy of the ResNet18 + SE implementation ResNet34 and ResNet50 were also trained and evaluated. However the training process was less efficient since 
+the models started overfitting early on due to the high parameter count. As a result the model evaluation yielded a lower accuracy than the original ResNet18 + SE design.
 
 \subsection{EfficientNetV2-S Optimization Dynamics}
 EfficientNetV2-S ultimately emerged as one of the top two best-performing models across all validation benchmarks. To ensure a rigorous comparison, we empirically optimized and tuned each optimizer to find its stable configuration.
@@ -76,6 +95,33 @@ AdamW & 83.10\% \\
 \label{tab:optimizers}
 \end{table}
 
+\subsection{Evaluation of Class Imbalance and Prediction Bias}
+To quantify the impact of dataset imbalance, we evaluated the EfficientNetV2-S model trained using standard sampling techniques. The validation results exposed a severe disparity in per-class accuracy, confirming the theoretical bias toward visually distinct majority classes.
+
+As presented in Table \ref{tab:bias_evaluation}, the model achieved a global accuracy of 60.17\%. However, the per-class breakdown reveals that the network massively over-predicted the \textit{happiness} class (96.62\% accuracy), while almost entirely failing to recognize \textit{fear} (17.20\% accuracy) and \textit{disgust} (29.99\% accuracy).
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Emotion Class} & \textbf{Accuracy (\%)} & \textbf{Correct / Total} \\
+\midrule
+Happiness & 96.62\% & 743 / 769 \\
+Surprise & 83.80\% & 652 / 778 \\
+Sadness & 66.71\% & 483 / 724 \\
+Anger & 63.36\% & 472 / 745 \\
+Disgust & 29.99\% & 224 / 747 \\
+Fear & 17.20\% & 124 / 721 \\
+\midrule
+\textbf{Global} & \textbf{60.17\%} & \textbf{2698 / 4484} \\
+\bottomrule
+\end{tabular}
+\caption{Validation accuracy demonstrating severe prediction bias toward the majority class.}
+\label{tab:bias_evaluation}
+\end{table}
+
+The deployment of LDAM-DRW directly addresses this disparity. By enforcing wider margins for \textit{fear} and \textit{disgust} and deferring the re-weighting until the final training phase, the model is penalized for default \textit{happiness} predictions, yielding a more uniform performance distribution across all six target categories.
+
 \subsection{GAN}
 
 Inspired by the work  with Super-Resolution Generative Adversarial Network \cite{Siam2022EmotionDetection} we decided to test with a 2x upscaling factor applied at our 64x64 images and then resize it back to 64x64.
@@ -103,6 +149,6 @@ The CERN architecture is derived from a LightCNN backbone with depths ranging fr
 
 Due to GPU memory constraints, it was not feasible to replicate the complete architecture with combined local and global attention mechanisms. Therefore, a reduced variant consisting of seven convolutional layers and a batch size of 16 was implemented to fit within the available computational resources. Even under this simplified configuration, training remained computationally intensive: 10 epochs required more than 24 hours, and long runs were occasionally interrupted, necessitating continuation from saved checkpoints.
 
-At epoch 47, the model achieved 66.70% evaluation accuracy and 67.51% training accuracy. By generalization it has not surpassed the 30% acurracy. The learning dynamics showed extended plateaus followed by sudden improvements, suggesting that additional training time could potentially yield further performance gains. However, limited computational capacity—including the use of an NVIDIA RTX 2060 GPU—prevented full exploration of longer training schedules or the use of pretrained weights from the original seven-class model.
+At epoch 47, the model achieved 66.70 % evaluation accuracy and 67.51% training accuracy. By generalization it has not surpassed the 30% acurracy. The learning dynamics showed extended plateaus followed by sudden improvements, suggesting that additional training time could potentially yield further performance gains. However, limited computational capacity—including the use of an NVIDIA RTX 2060 GPU—prevented full exploration of longer training schedules or the use of pretrained weights from the original seven-class model.
 
 
