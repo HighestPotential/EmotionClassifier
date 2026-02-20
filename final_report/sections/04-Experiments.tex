@@ -68,3 +68,30 @@ AdamW & 83.10\% \\
 \caption{Comparison of optimizer performance on EfficientNetV2-S.}
 \label{tab:optimizers}
 \end{table}
+
+\subsection{Evaluation of Class Imbalance and Prediction Bias}
+To quantify the impact of dataset imbalance, we evaluated the EfficientNetV2-S model trained using standard sampling techniques. The validation results exposed a severe disparity in per-class accuracy, confirming the theoretical bias toward visually distinct majority classes.
+
+As presented in Table \ref{tab:bias_evaluation}, the model achieved a global accuracy of 60.17\%. However, the per-class breakdown reveals that the network massively over-predicted the \textit{happiness} class (96.62\% accuracy), while almost entirely failing to recognize \textit{fear} (17.20\% accuracy) and \textit{disgust} (29.99\% accuracy).
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Emotion Class} & \textbf{Accuracy (\%)} & \textbf{Correct / Total} \\
+\midrule
+Happiness & 96.62\% & 743 / 769 \\
+Surprise & 83.80\% & 652 / 778 \\
+Sadness & 66.71\% & 483 / 724 \\
+Anger & 63.36\% & 472 / 745 \\
+Disgust & 29.99\% & 224 / 747 \\
+Fear & 17.20\% & 124 / 721 \\
+\midrule
+\textbf{Global} & \textbf{60.17\%} & \textbf{2698 / 4484} \\
+\bottomrule
+\end{tabular}
+\caption{Validation accuracy demonstrating severe prediction bias toward the majority class.}
+\label{tab:bias_evaluation}
+\end{table}
+
+The deployment of LDAM-DRW directly addresses this disparity. By enforcing wider margins for \textit{fear} and \textit{disgust} and deferring the re-weighting until the final training phase, the model is penalized for default \textit{happiness} predictions, yielding a more uniform performance distribution across all six target categories.
