@@ -149,15 +149,6 @@ For EfficientNetV2-S, both advanced loss functions were evaluated. For ResNet-18
 
 Second, we implemented Label-Distribution-Aware Margin Loss (LDAM) coupled with Deferred Re-Weighting (DRW) \cite{cao2019learning}. LDAM modifies the logit outputs by assigning a significantly larger mathematical margin to minority classes. This strictly penalizes the model unless it maintains extreme confidence when predicting rare classes, thereby enforcing wider decision boundaries around them. The DRW strategy schedules the training such that the model trains without artificial weights for the initial epochs to learn robust feature representations. In the final epochs, strict class frequency weights are applied to fine-tune the decision boundaries for the minority classes without corrupting the initial feature learning phase.
 
-\subsection{Explainable AI}
-We use Grad-CAM and Integrated Gradients to visualize which parts of an image influence the model's predictions.
-
-Grad-CAM produces a heatmap by using gradients in a chosen convolutional layer to estimate which spatial regions are important for a prediction, and then upsamples the heatmap to input size \cite{selvaraju2017gradcam}. In our setting, Grad-CAM often appeared coarse because the input images are only $64 \times 64$ and the network downsamples across stages. As a result, the spatial resolution of deep feature maps becomes small (often single-digit spatial dimensions). When a low-resolution heatmap is resized back to $64 \times 64$, it becomes blocky and highlights broad regions rather than precise facial details.
-
-Integrated Gradients produces attributions directly in input space, which makes it better suited for small images \cite{sundararajan2017ig}. In our qualitative comparisons, Integrated Gradients resulted in clearer and more fine-grained explanations that aligned better with facial structures such as the mouth region, eyes, and eyebrows. For this reason, Integrated Gradients was used as the primary explanation method in the final qualitative analysis and in the demo overlays.
-
-To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial 7×7 convolution was replaced with a 3×3 kernel and the input resolution was reduced from 224×224 to 64×64. 
-
 \subsubsection{Transfer Learning (IR50)}
 We wanted to try bigger models for our project. However, we did not have enough data to train a large model from zero. Transfer learning allowed us to test how this method works in our specific case and opened the possibility to use a larger architecture. A positive side effect was that the pre-trained model (InsightFace ResNet-50) had already learned facial features from a massive dataset of one million images (Ms-Celeb-1M) \cite{wang2025qcsfeaturerefiningquadruplet}.
 
