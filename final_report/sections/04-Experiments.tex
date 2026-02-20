@@ -8,8 +8,8 @@
 The performance of ReLU and LeakyReLU activation functions was systematically evaluated, with LeakyReLU demonstrating superior overall accuracy. Optimization strategies included Stochastic Gradient Descent (with standard hyperparameters), Adam (with learning rate set as 0.001), and AdamW were tested and  Adam with a learning rate of 0.001 yielded the best performance across both the shallow CNN architectures and the modified ResNet-18. Further improvements were achieved through the integration of Batch Normalization, Dropout regularization, and late-stage global average pooling, which enhanced feature stability, mitigated overfitting, and preserved high-level spatial representations relevant to emotion classification.
 
 
-\subsection{ResNet18+SE Ablation: Optimizer and Loss (Aleks)}
-To measure the effect of optimizer choice and loss function while keeping the architecture fixed, we trained the same ResNet18+SE model under four configurations: (1) AdamW + class-balanced focal loss, (2) AdamW + weighted cross-entropy, (3) SGD + class-balanced focal loss, and (4) SGD + weighted cross-entropy. All runs used the same input resolution ($64 \times 64$), the same augmentation setup, and the same training duration. The validation performance curves are shown in Fig.~\ref{fig:aleks_ablation}.
+\subsection{ResNet18+SE Ablation: Optimizer and Loss Function}
+To measure the effect of optimizer choice and loss function while keeping the architecture fixed, we trained the same ResNet18+SE model under four configurations: (1) AdamW + class-balanced focal loss, (2) AdamW + weighted cross-entropy, (3) SGD + class-balanced focal loss, and (4) SGD + weighted cross-entropy. All runs used the same input resolution ($64 \times 64$), the same augmentation setup, and the same training duration. The validation performance curves are shown in Fig.
 
 Across the four settings, SGD with class-balanced focal loss achieved the strongest validation performance. One likely reason is that AdamW can converge quickly early on, but with noisy and heterogeneous FER data it can also lead to solutions that generalize less well. In addition, class-balanced focal loss tends to be more robust for strong imbalance than weighted cross-entropy because it continues to emphasize hard and minority-class examples later in training \cite{lin2017focal,cui2019classbalanced}. In the final pipeline, imbalance is therefore handled mainly through the loss formulation rather than through sampling-based balancing.
 
@@ -76,11 +76,11 @@ AdamW & 83.10\% \\
 \label{tab:optimizers}
 \end{table}
 
-\subscetion{GAN}
+\subsection{GAN}
 
 Inspired by the work  with Super-Resolution Generative Adversarial Network \cite{Siam2022EmotionDetection} we decided to test with a 2x upscaling factor applied at our 64x64 images and then resize it back to 64x64.
 
-A Generative Adversarial Network (GAN) is a deep learning model based on two neural networks- a generator and a discriminator). The generator is responsible for creating realistic data, images in our example, and the discriminator tries to differentiate real data from fake ones. They are trained together until the generator has the capacity to produce outputs that the discriminator cannot distinguish from the real data. \cite{https://doi.org/10.1111/coin.12437}
+A Generative Adversarial Network (GAN) is a deep learning model based on two neural networks- a generator and a discriminator). The generator is responsible for creating realistic data, images in our example, and the discriminator tries to differentiate real data from fake ones. They are trained together until the generator has the capacity to produce outputs that the discriminator cannot distinguish from the real data. \cite{multi}
 
 Furthermore, a Super Resolution Generative Adversarial Network (SRGAN) method is a GAN that can convert low-resolution images into high-resolution and realistic images. \cite{WEI2024127207}
 
