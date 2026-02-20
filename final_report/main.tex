@@ -1,5 +1,7 @@
 \documentclass[10pt, letterpaper, twocolumn]{article}
 \usepackage[review]{cvpr}
+\usepackage[final]{cvpr}
+\usepackage{hyperref} % CHANGED: Added the hyperref package to satisfy the cvpr final mode requirements
 
 \input{preamble.tex}
 
@@ -16,9 +18,14 @@ Daniel Pfefferkorn\\
 \begin{document}
 \maketitle
 \input{sections/01-Introduction.tex}
+\input{sections/02-RelatedWork.tex}
+\input{sections/03-Methodology.tex}
+\input{sections/04-Experiments.tex}
+\input{sections/05-Conclusion.tex}
 
 {
     \small
+    \nocite{*} % CHANGED: Included nocite to force BibTeX to process the bibliography without inline citations
     \bibliographystyle{ieeenat_fullname}
     \bibliography{references}
 }

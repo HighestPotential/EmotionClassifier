@@ -1,6 +1,8 @@
 import os
 import math
 import random
+import platform
+import csv
 import numpy as np
 import torch
 import torch.nn as nn
@@ -85,7 +87,6 @@ class RemappedImageFolder(Dataset):
         return img, y
 
 
-
 def load_split_dataset(ready_root: str, dataset_names: list[str], split: str, transform):
     parts = []
     for name in dataset_names:
@@ -160,22 +161,69 @@ def accuracy(model, loader, device, desc="Eval"):
     return correct / max(1, total)
 
 
-def main():
+@torch.no_grad()
+def eval_loss(model, loader, criterion, device):
+    model.eval()
+    total_loss = 0.0
+    total = 0
+    for imgs, labels in loader:
+        imgs = imgs.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
+        logits = model(imgs)
+        loss = criterion(logits, labels)
+        bs = labels.size(0)
+        total_loss += loss.item() * bs
+        total += bs
+    return total_loss / max(1, total)
+
+class ClassBalancedFocalLoss(nn.Module):
     
+    def __init__(self, samples_per_class, beta=0.9999, gamma=2.0):
+        super().__init__()
+        samples = torch.tensor(samples_per_class, dtype=torch.float32)
+
+        effective_num = 1.0 - torch.pow(beta, samples)
+        weights = (1.0 - beta) / effective_num
+        weights = weights / weights.sum() * len(samples)
+
+        self.register_buffer("weights", weights)
+        self.gamma = gamma
+
+    def forward(self, logits, targets):
+        ce_loss = F.cross_entropy(
+            logits,
+            targets,
+            weight=self.weights,
+            reduction="none"
+        )
+
+        pt = torch.exp(-ce_loss)          
+        focal_loss = (1 - pt) ** self.gamma * ce_loss
+
+        return focal_loss.mean()
+
+def main():
+
     seed_everything(int(os.getenv("SEED", "42")))
 
     default_ready_root = r"C:\Users\drnes\OneDrive\Desktop\PC\Aleks\Aleks Uni\Computer Vision\Final_Project\EmotionClassifier\EmotionClassifier-aleks\ready_to_use_datasets"
     ready_root = os.getenv("READY_ROOT", default_ready_root)
 
+    weights_dir = r"C:\Users\drnes\OneDrive\Desktop\PC\Aleks\Aleks Uni\Computer Vision\Final_Project\EmotionClassifier\EmotionClassifier-aleks\models\aleks\weights"
+    os.makedirs(weights_dir, exist_ok=True)
+
+    comparison_dir = r"C:\Users\drnes\OneDrive\Desktop\PC\Aleks\Aleks Uni\Computer Vision\Final_Project\EmotionClassifier\EmotionClassifier-aleks\models\aleks\Comparison\SGD_class_balanced_focal_loss"
+    os.makedirs(comparison_dir, exist_ok=True)
+    results = []
+
     img_size = int(os.getenv("IMAGE_SIZE", "64"))
     num_classes = 6
     bs = int(os.getenv("BATCH_SIZE", "128"))
-    epochs = int(os.getenv("EPOCHS", "300"))
+    epochs = int(os.getenv("EPOCHS", "200"))
 
     lr = float(os.getenv("LR", "0.03"))
     momentum = float(os.getenv("MOMENTUM", "0.9"))
     wd = float(os.getenv("WEIGHT_DECAY", "0.0005"))
-    label_smooth = float(os.getenv("LABEL_SMOOTHING", "0.05"))
     mixup_alpha = float(os.getenv("MIXUP_ALPHA", "0.15"))
     mixup_prob = float(os.getenv("MIXUP_PROB", "0.3"))
 
@@ -185,6 +233,10 @@ def main():
     num_workers = int(os.getenv("NUM_WORKERS", str(auto_num_workers() if device.type == "cuda" else 0)))
     pin_mem = (device.type == "cuda")
     persistent = (num_workers > 0)
+
+    if platform.system() == "Darwin":
+        num_workers = 0
+        persistent = False
 
     train_tfm = transforms.Compose([
         transforms.Resize((img_size, img_size)),
@@ -209,12 +261,6 @@ def main():
     train_ds = load_split_dataset(ready_root, ds_names, "train", train_tfm)
     eval_ds = load_split_dataset(ready_root, ds_names, "eval", eval_tfm)
     test_ds = load_split_dataset(ready_root, ds_names, "test", eval_tfm)
-    
-    print("Device:", device)
-    print("READY_ROOT:", ready_root)
-    print("Datasets:", ", ".join(ds_names))
-    print("num_workers:", num_workers)
-    print("train/eval/test:", len(train_ds), len(eval_ds), len(test_ds))
 
     train_loader = DataLoader(
         train_ds,
@@ -254,7 +300,7 @@ def main():
 
     samples_per_cls = count_samples_per_class(train_ds)
     cls_weights = make_class_weights(samples_per_cls).to(device)
-    criterion = nn.CrossEntropyLoss(weight=cls_weights, label_smoothing=label_smooth).to(device)
+    criterion = ClassBalancedFocalLoss(samples_per_class = samples_per_cls, beta=0.9999, gamma=2.0).to(device)
 
     optim = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum, weight_decay=wd, nesterov=True)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=epochs)
@@ -264,7 +310,7 @@ def main():
 
     best_eval = 0.0
     best_train = 0.0
-    best_path = "best_resnet18_se.pth"
+    best_path = os.path.join(weights_dir, "best_resnet18_se.pth")
     patience = 999
     best_ep = 0
 
@@ -321,6 +367,16 @@ def main():
         train_loss = running_loss / max(1, seen)
         train_acc = correct / max(1, seen)
         eval_acc = accuracy(model, eval_loader, device, desc=f"Eval  {ep}/{epochs}")
+        eval_loss_val = eval_loss(model, eval_loader, criterion, device)
+
+        if ep % 5 == 0:
+            results.append({
+                "epoch": ep,
+                "train_loss": train_loss,
+                "eval_loss": eval_loss_val,
+                "train_acc": train_acc,
+                "eval_acc": eval_acc,
+            })
 
         print(
             f"Epoch {ep}/{epochs} | "
@@ -337,6 +393,16 @@ def main():
             print(f"Early stopping at epoch {ep}")
             break
 
+    csv_path = os.path.join(comparison_dir, "results_SGD_class_balanced_focal_loss"
+    ".csv")
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["epoch", "train_loss", "eval_loss", "train_acc", "eval_acc"]
+        )
+        writer.writeheader()
+        writer.writerows(results)
+
     try:
         state = torch.load(best_path, map_location=device, weights_only=True)
     except TypeError:
@@ -349,6 +415,7 @@ def main():
     print(f"Best eval acc: {best_eval*100:.2f}%")
     print(f"Test acc     : {test_acc*100:.2f}%")
     print(f"Saved to     : {best_path}")
+    print(f"CSV saved to : {csv_path}")
 
 
 if __name__ == "__main__":

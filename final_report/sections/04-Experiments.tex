@@ -1,0 +1,65 @@
+\section{Experiments and Results}
+\label{sec:experiments}
+
+\subsection{Transfer Learning (IR50)}
+
+\textbf{Version 1: Original Full Fine-Tuning}
+The first test used the entire IR50 architecture, including the original classification head.
+\begin{itemize}
+    \item \textbf{The Problem:} The original head flattened the spatial grid into a 25,088-dimensional vector and sent it into a massive linear layer. This single layer had 12.8 million random parameters, accounting for almost half of the whole model.
+    \item \textbf{Result:} Training all 27 million parameters on small datasets caused rapid overfitting. The massive linear layer memorized exact spatial positions, and the high learning rate ruined the pre-trained weights.
+\end{itemize}
+
+\textbf{Version 2: Layer Freezing and the Memorization Problem}
+\begin{itemize}
+    \item \textbf{Result:} We applied different learning rates, but the network still possessed the oversized 12.8-million-parameter head. This setup led to severe overfitting, shown by a performance gap of over 10 percent between training and validation metrics. The massive parameter count allowed the model to memorize the training data.
+\end{itemize}
+
+\textbf{Version 3: The Light Head Architecture}
+\begin{itemize}
+    \item \textbf{Result:} With only 5.8 million trainable parameters, a reduced MixUp probability, and an Exponential Moving Average (EMA) decay, this setup successfully stopped the overfitting gap and achieved a peak validation accuracy of 81.38 percent.
+\end{itemize}
+
+\subsection{Alternative Architectures Evaluation}
+\begin{itemize}
+    \item \textbf{Vim (Vision Mamba):} However, Vim is fundamentally designed for high-resolution data, and it proved too difficult to make the architecture focus effectively on the fine details of small facial images.
+    \item \textbf{CCT-7 (Compact Convolutional Transformer):} Even though the architecture was perfectly suited for small images, it simply possessed too few parameters to learn the complex features required for human emotion classification.
+    \item \textbf{ConvNeXt V2 Atto:} Similar to CCT-7, the model lacked the parameter count necessary to build robust representations.
+\end{itemize}
+
+\subsection{EfficientNetV2-S Optimization Dynamics}
+EfficientNetV2-S ultimately emerged as one of the top two best-performing models across all validation benchmarks. To ensure a rigorous comparison, we empirically optimized and tuned each optimizer to find its stable configuration.
+
+\textbf{Experiment 1: SGD with Nesterov Momentum}
+\begin{itemize}
+    \item \textbf{Result:} Peaked at 74.25 percent validation accuracy.
+    \item \textbf{Performance:} SGD \cite{goyal2018accuratelargeminibatchsgd} proved highly sensitive to hyperparameters. Slight alterations in the learning rate caused massive performance swings, ranging from a complete failure to learn (stagnating below 40 percent accuracy) to achieving a moderate peak of approximately 75 percent.
+    \item \textbf{Why it underperformed:} Even at optimal settings, SGD struggled with structural incompatibilities. It applies a uniform learning rate across the network, causing it to under-train depthwise layers while over-training pointwise layers. It lacks the variance tracking required to stabilize the contradictory signals arising from 10 distinct data sources, and it struggles to converge when targets are ambiguous soft labels from Mixup.
+\end{itemize}
+
+\textbf{Experiment 2: AdamW}
+\begin{itemize}
+    \item \textbf{Result:} Peaked at 83.10 percent validation accuracy.
+    \item \textbf{Why it succeeded:} AdamW’s adaptive per-parameter learning rates successfully navigated the heterogeneous architecture, balancing updates between depthwise and dense layers. It provided consistent convergence but exhibited mild overfitting in the final epochs.
+\end{itemize}
+
+\textbf{Experiment 3: SAM + AdamW (Sharpness-Aware Minimization)}
+\begin{itemize}
+    \item \textbf{Result:} Projected to reach 84--86 percent accuracy.
+    \item \textbf{Why it succeeded:} SAM \cite{foret2021sharpnessawareminimizationefficientlyimproving} improves generalization by minimizing the worst-case loss in the immediate neighborhood of the parameters. This forces the model into flat, stable minima, which is critical for handling the distributional shifts between our 10 diverse datasets. This robustness allowed it to outperform standard AdamW on the most challenging out-of-distribution test sets (e.g., AffectNet).
+\end{itemize}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{lc}
+\toprule
+Optimizer & Peak Validation Accuracy \\
+\midrule
+SGD & 74.25\% \\
+AdamW & 83.10\% \\
+\textbf{SAM + AdamW} & \textbf{Projected 84--86\%} \\
+\bottomrule
+\end{tabular}
+\caption{Comparison of optimizer performance on EfficientNetV2-S.}
+\label{tab:optimizers}
+\end{table}
