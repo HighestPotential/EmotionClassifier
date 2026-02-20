@@ -19,9 +19,7 @@ As illustrated in the preprocessing section, the aggregated datasets are imbalan
 
 For the final training phase, CK+ and KDEF were deliberately excluded from the training set in order to evaluate the generalization capability of the proposed model on unseen datasets. It is important to emphasize that both datasets are relatively balanced.
 
-CK+ is a well-established dataset focusing on prototypical and micro-expressions, with annotations grounded in the Facial Action Coding System (FACS) developed by Ekman and Friesen~\cite{Ekman1978FACS}. FACS defines facial movements in terms of Action Units (AUs), which correspond to specific underlying muscle activations. The selection of key facial landmarks and their configuration in CK+ follows the FACS framework~\cite{Lucey2010CK}, making it particularly suitable for evaluating models designed to capture fine-grained facial expression dynamics.
-
-KDEF, on the other hand, contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions. Although the images were resized to $64 \times 64$ pixels to meet the architectural requirements of this study, the dataset remains valuable for assessing cross-dataset robustness due to its standardized acquisition setup.
+KDEF also contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions. Although the images were resized to $64 \times 64$ pixels to meet the architectural requirements of this study, the dataset remains valuable for assessing cross-dataset robustness due to its standardized acquisition setup.
 
 By excluding CK+ and KDEF from training, these datasets served as independent test sets, enabling a more rigorous evaluation of cross-dataset generalization performance.
 
