@@ -1,10 +1,7 @@
 \section{Experiments and Results}
 \label{sec:experiments}
 
-\subsection{Architectural Adaptations}
-
-
-\subsection{Basic CNNs and ResNet18}
+\subsection{Basic CNNs and ResNet18 Configuration Enhancements}
 The performance of ReLU and LeakyReLU activation functions was systematically evaluated, with LeakyReLU demonstrating superior overall accuracy. Optimization strategies included Stochastic Gradient Descent (with standard hyperparameters), Adam (with learning rate set as 0.001), and AdamW were tested and  Adam with a learning rate of 0.001 yielded the best performance across both the shallow CNN architectures and the modified ResNet-18. Further improvements were achieved through the integration of Batch Normalization, Dropout regularization, and late-stage global average pooling, which enhanced feature stability, mitigated overfitting, and preserved high-level spatial representations relevant to emotion classification.
 
 
@@ -34,24 +31,10 @@ The first test used the entire IR50 architecture, including the original classif
 
 \subsection{Alternative Architectures Evaluation}
 
-During the course of the development process each team member implemented a number of different archtiectures to analyze and compare the performance of different designs.
-The following section will provide a short overview over the most interesting networks and the results.
+\subsubsection{Vim (Vision Mamba):} However, Vim is fundamentally designed for high-resolution data, and it proved too difficult to make the architecture focus effectively on the fine details of small facial images.
+\subsubsection{CCT-7 (Compact Convolutional Transformer):} Even though the architecture was perfectly suited for small images, it simply possessed too few parameters to learn the complex features required for human emotion classification.
+\subsubsection{ConvNeXt V2 Atto:} Similar to CCT-7, the model lacked the parameter count necessary to build robust representations.
 
-\subsubsection{Vim (Vision Mamba)}
-
-However, Vim is fundamentally designed for high-resolution data, and it proved too difficult to make the architecture focus effectively on the fine details of small facial images.
-
-\subsubsection{CCT-7 (Compact Convolutional Transformer)}
-
-Even though the architecture was perfectly suited for small images, it simply possessed too few parameters to learn the complex features required for human emotion classification.
-
-\subsubsection{ConvNeXt V2 Atto}
-
-Similar to CCT-7, the model lacked the parameter count necessary to build robust representations.
-
-\subsubsection{GoogLeNet}
-
-The GoogLeNet architecture uses a 
 
 \subsubsection{Other ResNet implementations}
 
@@ -126,7 +109,6 @@ The deployment of LDAM-DRW directly addresses this disparity. By enforcing wider
 
 Inspired by the work  with Super-Resolution Generative Adversarial Network \cite{Siam2022EmotionDetection} we decided to test with a 2x upscaling factor applied at our 64x64 images and then resize it back to 64x64.
 
-A Generative Adversarial Network (GAN) is a deep learning model based on two neural networks- a generator and a discriminator). The generator is responsible for creating realistic data, images in our example, and the discriminator tries to differentiate real data from fake ones. They are trained together until the generator has the capacity to produce outputs that the discriminator cannot distinguish from the real data. \cite{multi}
 
 Furthermore, a Super Resolution Generative Adversarial Network (SRGAN) method is a GAN that can convert low-resolution images into high-resolution and realistic images. \cite{WEI2024127207}
 
@@ -135,13 +117,9 @@ Unfortunately, due to the image size and that the enhancement process makes the 
 The chosen GAN was GFPGAN, a practical algorithm for real-world face restoration. The model with the second version had the best experimental result and was selected to be applied to all the images, so the group could compare between the normal folder and the GAN-enhanced folder. 
 
 
-
-Github repository: TencentARC/GFPGAN: GFPGAN aims at developing Practical Algorithms for Real-world Face Restoration. 
-
-
 \subsection{Dual-Input Training}
 
-Inspired by the paper about CERN the dual-input strategy was implemented. It consists of giving the training process the same image as two inputs and the correct label. The first image is the normal one and the second is augmented. So in order to receive the correct result, the model has to predict both versions of the image correctly. The results with the dual-input were outperformed by the normal training. It also has increased overfitting, a difference bigger than 10\% (86,45\% to 76,15\%) between train and evaluation accuracy.
+Inspired by the paper about CERN\cite{GERA20229} the dual-input strategy was implemented. It consists of giving the training process the same image as two inputs and the correct label. The first image is the normal one and the second is augmented. So in order to receive the correct result, the model has to predict both versions of the image correctly. The results with the dual-input were outperformed by the normal training. It also has increased overfitting, a difference bigger than 10\% (86,45\% to 76,15\%) between train and evaluation accuracy.
 
 \subsection{CERN-Based Architecture}
 
@@ -149,6 +127,5 @@ The CERN architecture is derived from a LightCNN backbone with depths ranging fr
 
 Due to GPU memory constraints, it was not feasible to replicate the complete architecture with combined local and global attention mechanisms. Therefore, a reduced variant consisting of seven convolutional layers and a batch size of 16 was implemented to fit within the available computational resources. Even under this simplified configuration, training remained computationally intensive: 10 epochs required more than 24 hours, and long runs were occasionally interrupted, necessitating continuation from saved checkpoints.
 
-At epoch 47, the model achieved 66.70 % evaluation accuracy and 67.51% training accuracy. By generalization it has not surpassed the 30% acurracy. The learning dynamics showed extended plateaus followed by sudden improvements, suggesting that additional training time could potentially yield further performance gains. However, limited computational capacity—including the use of an NVIDIA RTX 2060 GPU—prevented full exploration of longer training schedules or the use of pretrained weights from the original seven-class model.
-
+At epoch 47, the model achieved 66.70\% evaluation accuracy and 67.51\% training accuracy. The learning dynamics showed extended plateaus followed by sudden improvements, suggesting that additional training time could potentially yield further performance gains. However, limited computational capacity—including the use of an NVIDIA RTX 2060 GPU—prevented full exploration of longer training schedules or the use of pretrained weights from the original seven-class model.
 
