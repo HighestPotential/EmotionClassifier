@@ -83,7 +83,7 @@ convolutional layers as the base layer for grad-cam which yielded strongly impro
 The poor performance of the grad-cam method is a result of the heavy downsampling during our model's forward pass. The resolution ($8 \times 8$) of the final feature maps lacks sufficient 
 spacial information to effectively reconstruct the importance of the low resolution input. This also explains why we achieved better results on a layer using higher resolution feature maps.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \begin{subfigure}{0.4\columnwidth}
         \includegraphics[scale=0.3]{figures/Layer_4_GradCAM.png}
@@ -105,7 +105,7 @@ The result is a fine grained attention map which highlights the most important p
 
 This approach seemed interesting to us as the quality of the output did not rely on the architectural details of our model.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \includegraphics[scale=0.3]{figures/IntegratedGradients.png}
     \caption{Heatmap resulting from the integrated gradients method}
