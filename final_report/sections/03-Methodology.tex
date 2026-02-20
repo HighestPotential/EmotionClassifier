@@ -130,6 +130,7 @@ After the stem, we follow the standard ResNet18 design with four stages of resid
 We augment the ResNet18 backbone with squeeze-and-excitation (SE) blocks, which perform lightweight channel-wise attention by learning per-channel scaling factors from globally pooled features, improving representational capacity with minimal overhead \cite{hu2018senet}. The motivation for using a lightweight attention mechanism is consistent with the goal of improving robustness without greatly increasing model size and is aligned with compact FER approaches such as CERN \cite{gera2022cern}.
 
 \subsubsection{Loss Function and Class Imbalance}
+
 Class imbalance is handled through the objective function, meaning the loss function that the model minimizes during training. In standard classification, the model is trained by minimizing cross-entropy loss. With imbalanced data, standard cross-entropy can be dominated by majority classes because they appear more frequently and therefore contribute more gradient updates.
 
 To address this, we modify the training objective by using class-balanced focal loss. The class-balanced component assigns larger weights to underrepresented classes using the effective number of samples \cite{cui2019classbalanced}, while the focal component reduces the contribution of well-classified (easy) samples so that the model continues learning from harder examples \cite{lin2017focal}. Therefore, we use standard shuffling and address imbalance through the loss rather than through a \texttt{WeightedRandomSampler}.
@@ -150,6 +151,7 @@ For EfficientNetV2-S, both advanced loss functions were evaluated. For ResNet-18
 Second, we implemented Label-Distribution-Aware Margin Loss (LDAM) coupled with Deferred Re-Weighting (DRW) \cite{cao2019learning}. LDAM modifies the logit outputs by assigning a significantly larger mathematical margin to minority classes. This strictly penalizes the model unless it maintains extreme confidence when predicting rare classes, thereby enforcing wider decision boundaries around them. The DRW strategy schedules the training such that the model trains without artificial weights for the initial epochs to learn robust feature representations. In the final epochs, strict class frequency weights are applied to fine-tune the decision boundaries for the minority classes without corrupting the initial feature learning phase.
 
 \subsubsection{Transfer Learning (IR50)}
+
 We wanted to try bigger models for our project. However, we did not have enough data to train a large model from zero. Transfer learning allowed us to test how this method works in our specific case and opened the possibility to use a larger architecture. A positive side effect was that the pre-trained model (InsightFace ResNet-50) had already learned facial features from a massive dataset of one million images (Ms-Celeb-1M) \cite{wang2025qcsfeaturerefiningquadruplet}.
 
 Our model is based on ResNet18 and is extended with a squeeze-and-excitation (SE) attention module. ResNet18 serves as a stable baseline with moderate capacity
