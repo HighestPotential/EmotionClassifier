@@ -47,6 +47,60 @@ This sequence exposed a fundamental contradiction: we were actively removing nat
 \end{itemize}
 In Phase 2, we started with 310,215 images. After selective pre-processing, we retained 229,478 images.
 
+\definecolor{darkblue}{RGB}{52, 73, 102}
+\definecolor{steelblue}{RGB}{100, 130, 160}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    title={\textbf{Number of Images per Emotion After Processing}},
+    ybar,
+    bar width=0.6cm,
+    width=8cm,
+    height=7cm,
+    symbolic x coords={Anger, Disgust, Fear, Happiness, Sadness, Surprise},
+    xtick=data,
+    x tick label style={rotate=30, anchor=east, font=\footnotesize},
+    xlabel={Emotions},
+    ylabel={Number of Images},
+    ymin=0,
+    ymax=100000,
+    ytick={0,20000,40000,60000,80000,100000},
+    scaled y ticks=false, % CHANGED: Disabled automatic scaling to show full integers from 0 to 100000.
+    yticklabel style={/pgf/number format/fixed, /pgf/number format/1000 sep={}},
+    nodes near coords,
+    nodes near coords style={font=\tiny},
+    every node near coord/.append style={
+        /pgf/number format/fixed,
+        /pgf/number format/precision=0
+    },
+    axis background/.style={fill=gray!10},
+    grid=major,
+    grid style={dashed, gray!40},
+    tick align=outside,
+    enlarge x limits=0.15,
+]
+
+\addplot[
+    fill=steelblue,
+    draw=darkblue,
+    thick
+] coordinates {
+    (Anger,    28364)
+    (Disgust,  18191)
+    (Fear,     21141)
+    (Happiness, 91842)
+    (Sadness,  36264)
+    (Surprise, 33676)
+};
+
+\end{axis}
+\end{tikzpicture}
+\caption{Number of Images per Emotion After Processing}
+\label{fig:processed_images_distribution}
+\end{figure}
+
 \textbf{Standardization and Deduplication}
 To finalize the datasets, all images underwent structural standardization:
 \begin{itemize}
@@ -79,6 +133,21 @@ We augment the ResNet18 backbone with squeeze-and-excitation (SE) blocks, which 
 Class imbalance is handled through the objective function, meaning the loss function that the model minimizes during training. In standard classification, the model is trained by minimizing cross-entropy loss. With imbalanced data, standard cross-entropy can be dominated by majority classes because they appear more frequently and therefore contribute more gradient updates.
 
 To address this, we modify the training objective by using class-balanced focal loss. The class-balanced component assigns larger weights to underrepresented classes using the effective number of samples \cite{cui2019classbalanced}, while the focal component reduces the contribution of well-classified (easy) samples so that the model continues learning from harder examples \cite{lin2017focal}. Therefore, we use standard shuffling and address imbalance through the loss rather than through a \texttt{WeightedRandomSampler}.
+
+\subsubsection{Emotion Prediction Bias and Advanced Loss Functions}
+% CHANGED: Reframed the introduction to highlight the 40% happiness imbalance as a specific challenge of the project's aggregated data, rather than a universal FER problem.
+A significant challenge encountered in our specific training pipeline was the severe class imbalance within our aggregated dataset. Specifically, images labeled as \textit{happiness} constituted approximately 40\% of the total data, while other categories, such as \textit{fear} and \textit{disgust}, were severely underrepresented. We sought to implement robust methods to counteract this inherent bias, which otherwise introduces a fundamental model flaw where the majority class becomes the default, high-confidence prediction, while subtle or rare emotions are ignored.
+
+This phenomenon is driven by two factors:
+\begin{itemize}
+    \item \textbf{Frequency versus Difficulty:} The \textit{happiness} class typically presents distinct visual markers (e.g., a smile) that are easily learned. Conversely, \textit{fear} and \textit{disgust} rely on subtle ocular and brow micro-expressions that degrade heavily at lower resolutions, such as $64 \times 64$ pixels.
+    \item \textbf{Loss Gradients:} Under standard cross-entropy loss, the model minimizes the global objective by maximizing confidence in the frequent, easy classes, functionally neglecting the minority classes.
+\end{itemize}
+
+To combat this bias, we evaluated two advanced loss functions designed for imbalanced image classification. First, we utilized Class-Balanced Focal Loss (CB-FL), which assigns larger weights to underrepresented classes using the effective number of samples and scales the loss based on prediction confidence, forcing the model to focus on hard, misclassified examples \cite{cui2019classbalancedlossbasedeffective}.
+For EfficientNetV2-S, both advanced loss functions were evaluated. For ResNet-18 SE, only Class-Balanced Focal Loss was applied.
+
+Second, we implemented Label-Distribution-Aware Margin Loss (LDAM) coupled with Deferred Re-Weighting (DRW) \cite{cao2019learning}. LDAM modifies the logit outputs by assigning a significantly larger mathematical margin to minority classes. This strictly penalizes the model unless it maintains extreme confidence when predicting rare classes, thereby enforcing wider decision boundaries around them. The DRW strategy schedules the training such that the model trains without artificial weights for the initial epochs to learn robust feature representations. In the final epochs, strict class frequency weights are applied to fine-tune the decision boundaries for the minority classes without corrupting the initial feature learning phase.
 
 \subsection{Explainable AI}
 We use Grad-CAM and Integrated Gradients to visualize which parts of an image influence the model's predictions.
