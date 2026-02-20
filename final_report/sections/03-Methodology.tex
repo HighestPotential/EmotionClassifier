@@ -3,13 +3,13 @@
 
 \subsection{Datasets}
 
-To ensure reliable and comparable results, four widely used benchmark datasets from the literature were selected at the beginning of this study. All datasets contain facial images categorized into the six target expressions: anger, disgust, fear, happiness, sadness, and surprise. The datasets employed were a smaller version of AffectNet (22,629 images), CK+ (927 images), FER+ (56,269 images), and RAF-DB (12,135 images).
+To ensure reliable and comparable results, four widely used benchmark datasets from the literature were selected at the beginning of this study. All datasets contain facial images categorized into the six target expressions: anger, disgust, fear, happiness, sadness, and surprise. The datasets employed were a smaller version of AffectNet \cite{affectnet} (22,629 images), CK+ \cite{ckplus}  (927 images), FER+ \cite{ferplus} (56,269 images), and RAF-DB \cite{rafdb} (12,135 images).
 
 FER+ was chosen instead of the original FER2013 due to its improved labeling quality, which has a direct impact on model performance and reliability. Moreover, the selected datasets provide diversity in terms of age, ethnicity, and gender, which is essential for improving the generalization capability of the models. Although AffectNet, CK+, and FER+ include an additional \textit{contempt} label, this class was excluded from the experiments as it falls outside the scope of the present study. The data includes both grayscale and RGB images. Image formats vary between JPEG and PNG, which does not affect the preprocessing or training pipeline.
 
 After the initial training sessions, the developed models exhibited strong overfitting. To mitigate this issue, additional datasets were sought, and access requests were submitted to multiple institutions worldwide to expand the training data.
 
-At the end of the data collection process, a total of 310,215 facial images were gathered. In addition to the previously mentioned datasets, the final corpus also included images from EmoSet, NHFI, JAFFE, MMA-FEDB, and WSEFEP. All datasets were carefully curated and harmonized to match the six target emotion categories used in this study.
+At the end of the data collection process, a total of 310,215 facial images were gathered. In addition to the previously mentioned datasets, the final corpus also included images from EmoSet \cite{emoset}, JAFFE \cite{jaffe}, MMA-FEDB \cite{mma}, ExpWild \cite{expw} and WSEFEP \cite{wse-fep}. All datasets were carefully curated and harmonized to match the six target emotion categories used in this study.
 
 Several challenges were encountered during dataset collection and curation. Some datasets contained incorrectly labeled samples, including statues, cartoon characters, or animals assigned to human emotion categories. In other cases, images were organized per subject rather than per emotion category, without consistent naming conventions, which prevented automated separation. Furthermore, some small datasets were ultimately discarded due to insufficient sample size or poor labeling quality.
 
@@ -17,7 +17,7 @@ As illustrated in the preprocessing section, the aggregated datasets are imbalan
 
 \subsection{Cross-Dataset Generalization Strategy}
 
-For the final training phase, CK+ and KDEF were deliberately excluded from the training set in order to evaluate the generalization capability of the proposed model on unseen datasets. It is important to emphasize that both datasets are relatively balanced.
+For the final training phase, CK+ and KDEF \cite{kdef} were deliberately excluded from the training set in order to evaluate the generalization capability of the proposed model on unseen datasets. It is important to emphasize that both datasets are relatively balanced.
 
 KDEF also contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions. Although the images were resized to $64 \times 64$ pixels to meet the architectural requirements of this study, the dataset remains valuable for assessing cross-dataset robustness due to its standardized acquisition setup.
 
