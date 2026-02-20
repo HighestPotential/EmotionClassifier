@@ -9,7 +9,7 @@ While generic object recognition models provide a strong baseline, FER benefits 
 
 \subsection{Lightweight Models and Transfer Learning Strategies for Efficient FER}
 
-Recent advances in facial expression recognition (FER) have largely been driven by increasingly deep and parameter-heavy convolutional neural networks. However, the CERN \cite{GERA20229} architecture challenges this trend by demonstrating that state-of-the-art (SOTA) performance can be achieved with only 1.45 million parameters. Despite its compact design, CERN outperformed several larger and more computationally demanding models across benchmark datasets.
+Recent advances in facial expression recognition (FER) have largely been driven by increasingly deep and parameter-heavy convolutional neural networks. However, the CERN \cite{GERA20229} architecture challenges this trend by demonstrating that state-of-the-art (SOTA) performance can be achieved with only 1.45 million parameters. Despite its compact design, CERN outperformed several larger and more computationally demanding models across benchmark datasets. On in-the-wild datasets RAFDB and FerPlus CERN reports 87.09% and 88.17% accuracies.
 
 The architecture is based on a LightCNN backbone and integrates Max-Feature-Map (MFM) activations for competitive feature selection, Efficient Channel Attention (ECA) for lightweight channel-wise refinement, and a dual-input consistency training strategy that enforces prediction invariance between original and augmented samples. This combination enables efficient feature representation while maintaining strong discriminative capacity.
 
