@@ -12,7 +12,6 @@ import os
 import argparse
 import csv
 import math
-from os.path import isdir
 from pathlib import Path
 
 from PIL import Image
