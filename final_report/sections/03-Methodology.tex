@@ -13,7 +13,7 @@ At the end of the data collection process, a total of 310,215 facial images were
 
 Several challenges were encountered during dataset collection and curation. Some datasets contained incorrectly labeled samples, including statues, cartoon characters, or animals assigned to human emotion categories. In other cases, images were organized per subject rather than per emotion category, without consistent naming conventions, which prevented automated separation. Furthermore, some small datasets were ultimately discarded due to insufficient sample size or poor labeling quality.
 
-As illustrated in the preprocessing section, the aggregated datasets are imbalanced, with a significantly higher number of happiness samples compared to the other emotion categories.
+As illustrated in the Figure \ref{fig:processed_images_distribution}, the aggregated datasets are imbalanced, with a significantly higher number of happiness samples compared to the other emotion categories.
 
 \subsection{Cross-Dataset Generalization Strategy}
 
@@ -111,15 +111,15 @@ To finalize the datasets, all images underwent structural standardization:
 
 \textbf{Dataset Splitting}
 At the beginning, we followed an 80\%/10\%/10\% split strategy, where 80\% of the data was used for training, 10\% for validation, and 10\% for testing.
-Towards the end of the project, we adopted a 90\%/10\% split strategy in most experiments. The training set comprised 90\% of the data, while 10\% was reserved for validation (evaluation). For the final test set, we exclusively utilized two specific high-quality datasets: CK+ and KDEF. This rigorous separation ensured that our final performance metrics reflected true generalization on standardized benchmarks.
+Towards the end of the project, some of us adopted a 90\%/10\% split strategy in most experiments. The training set comprised 90\% of the data, while 10\% was reserved for validation (evaluation). For the final test set, we exclusively utilized two specific high-quality datasets: CK+ and KDEF. This rigorous separation ensured that our final performance metrics reflected true generalization on standardized benchmarks.
 
 \subsection{Architectural Adaptations}
 
-\subsection{Basic CNNs and ResNet18 models}
+\subsubsection{Basic CNNs and ResNet18 models}
 To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial 7×7 convolution was replaced with a 3×3 kernel and the input resolution was reduced from 224×224 to 64×64. 
 
 \subsubsection{ResNet18 with Squeeze-and-Excitation}
-Our model is based on ResNet18 and is extended with a squeeze-and-excitation (SE) attention module. ResNet18 serves as a stable baseline with moderate capacity (roughly 11--12 million parameters). Results from compact FER literature, including CERN, suggest that attention mechanisms can improve performance across different model sizes, supporting our use of SE as a low-overhead architectural enhancement \cite{gera2022cern}.
+Our model is based on ResNet18 and is extended with a squeeze-and-excitation (SE) attention module. ResNet18 serves as a stable baseline with moderate capacity (roughly 11--12 million parameters). Results from compact FER literature, including CERN, suggest that attention mechanisms can improve performance across different model sizes, supporting our use of SE as a low-overhead architectural enhancement \cite{GERA20229}.
 
 The input to our network is a standardized RGB face image of size $64 \times 64$. Since this resolution is much smaller than the typical ImageNet setup ($224 \times 224$), we avoid aggressive downsampling in the first layers. In the original ImageNet ResNet, the stem commonly uses a $7 \times 7$ convolution with stride 2 followed by max pooling with stride 2. On a $64 \times 64$ image, this reduces spatial resolution very early: $64 \times 64$ becomes $32 \times 32$ after the first stride-2 convolution, and then $16 \times 16$ after max pooling, before the main residual stages even begin. This early reduction removes fine-grained facial details (for example small changes around eyes and mouth) that can be important for emotion recognition. The relationship between kernel size, stride, padding, and output resolution follows the standard convolution output sizing rule \cite{cs231n2017}.
 
@@ -127,10 +127,11 @@ For this reason, we use a $3 \times 3$ convolution with stride 1 in the first la
 
 After the stem, we follow the standard ResNet18 design with four stages of residual blocks and stage-wise downsampling. Residual connections add the block input to the block output, which stabilizes optimization in deep networks \cite{he2016resnet}. After the final stage, global average pooling produces a feature vector that is fed into a dropout-regularized linear classifier to output logits for the six emotion classes.
 
-We augment the ResNet18 backbone with squeeze-and-excitation (SE) blocks, which perform lightweight channel-wise attention by learning per-channel scaling factors from globally pooled features, improving representational capacity with minimal overhead \cite{hu2018senet}. The motivation for using a lightweight attention mechanism is consistent with the goal of improving robustness without greatly increasing model size and is aligned with compact FER approaches such as CERN \cite{gera2022cern}.
+We augment the ResNet18 backbone with squeeze-and-excitation (SE) blocks, which perform lightweight channel-wise attention by learning per-channel scaling factors from globally pooled features, improving representational capacity with minimal overhead \cite{hu2018senet}. The motivation for using a lightweight attention mechanism is consistent with the goal of improving robustness without greatly increasing model size and is aligned with compact FER approaches such as CERN \cite{GERA20229}.
 
 \subsubsection{Loss Function and Class Imbalance}
-Class imbalance is handled through the objective function, meaning the loss function that the model minimizes during training. In standard classification, the model is trained by minimizing cross-entropy loss. With imbalanced data, standard cross-entropy can be dominated by majority classes because they appear more frequently and therefore contribute more gradient updates.
+
+Class imbalance is handled through the loss used for training, which determines how strongly each sample influences the parameter updates. In the standard setting, this loss is cross-entropy. On an imbalanced dataset, cross-entropy can become biased toward majority classes, since they occur more often and therefore contribute a larger share of the gradient updates.
 
 To address this, we modify the training objective by using class-balanced focal loss. The class-balanced component assigns larger weights to underrepresented classes using the effective number of samples \cite{cui2019classbalanced}, while the focal component reduces the contribution of well-classified (easy) samples so that the model continues learning from harder examples \cite{lin2017focal}. Therefore, we use standard shuffling and address imbalance through the loss rather than through a \texttt{WeightedRandomSampler}.
 
@@ -149,43 +150,49 @@ For EfficientNetV2-S, both advanced loss functions were evaluated. For ResNet-18
 
 Second, we implemented Label-Distribution-Aware Margin Loss (LDAM) coupled with Deferred Re-Weighting (DRW) \cite{cao2019learning}. LDAM modifies the logit outputs by assigning a significantly larger mathematical margin to minority classes. This strictly penalizes the model unless it maintains extreme confidence when predicting rare classes, thereby enforcing wider decision boundaries around them. The DRW strategy schedules the training such that the model trains without artificial weights for the initial epochs to learn robust feature representations. In the final epochs, strict class frequency weights are applied to fine-tune the decision boundaries for the minority classes without corrupting the initial feature learning phase.
 
-\subsection{Explainable AI}
-We use Grad-CAM and Integrated Gradients to visualize which parts of an image influence the model's predictions.
-
-Grad-CAM produces a heatmap by using gradients in a chosen convolutional layer to estimate which spatial regions are important for a prediction, and then upsamples the heatmap to input size \cite{selvaraju2017gradcam}. In our setting, Grad-CAM often appeared coarse because the input images are only $64 \times 64$ and the network downsamples across stages. As a result, the spatial resolution of deep feature maps becomes small (often single-digit spatial dimensions). When a low-resolution heatmap is resized back to $64 \times 64$, it becomes blocky and highlights broad regions rather than precise facial details.
-
-Integrated Gradients produces attributions directly in input space, which makes it better suited for small images \cite{sundararajan2017ig}. In our qualitative comparisons, Integrated Gradients resulted in clearer and more fine-grained explanations that aligned better with facial structures such as the mouth region, eyes, and eyebrows. For this reason, Integrated Gradients was used as the primary explanation method in the final qualitative analysis and in the demo overlays.
-
-To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial 7×7 convolution was replaced with a 3×3 kernel and the input resolution was reduced from 224×224 to 64×64. 
-
 \subsubsection{Transfer Learning (IR50)}
 We wanted to try bigger models for our project. However, we did not have enough data to train a large model from zero. Transfer learning allowed us to test how this method works in our specific case and opened the possibility to use a larger architecture. A positive side effect was that the pre-trained model (InsightFace ResNet-50) had already learned facial features from a massive dataset of one million images (Ms-Celeb-1M) \cite{wang2025qcsfeaturerefiningquadruplet}.
 
-Our model is based on ResNet18 and is extended with a squeeze-and-excitation (SE) attention module. ResNet18 serves as a stable baseline with moderate capacity
-(roughly 11--12 million parameters). Results from compact FER literature, including CERN, suggest that attention mechanisms can improve performance across different
-model sizes, supporting our use of SE as a low-overhead architectural enhancement \cite{gera2022cern}. The input to our network is a standardized RGB face image of
-size $64 \times 64$. Since this resolution is much smaller than the typical ImageNet setup ($224 \times 224$), we avoid aggressive downsampling in the first layers.
-In the original ImageNet ResNet, the stem commonly uses a $7 \times 7$ convolution with stride 2 followed by max pooling with stride 2. On a $64 \times 64$ image, this
-reduces spatial resolution very early: $64 \times 64$ becomes $32 \times 32$ after the first stride-2 convolution, and then $16 \times 16$ after max pooling, before
-the main residual stages even begin. This early reduction removes fine-grained facial details (for example small changes around eyes and mouth) that can be important for emotion
-recognition. The relationship between kernel size, stride, padding, and output resolution follows the standard convolution output sizing rule \cite{cs231n2017}.
-For this reason, we use a $3 \times 3$ convolution with stride 1 in the first layer and omit early pooling, so the model preserves more spatial information in the early feature
-maps. This is also a common modification when ResNet-style models are adapted to small images (e.g., CIFAR-sized inputs), because preserving spatial detail early tends to improve
-learning on low-resolution inputs. After the stem, we follow the standard ResNet18 design with four stages of residual blocks and stage-wise downsampling. Residual connections
-add the block input to the block output, which stabilizes optimization in deep networks \cite{he2016resnet}. After the final stage, global average pooling produces a feature vector
-that is fed into a dropout-regularized linear classifier to output logits for the six emotion classes. We augment the ResNet18 backbone with squeeze-and-excitation (SE) blocks,
-which perform lightweight channel-wise attention by learning per-channel scaling factors from globally pooled features, improving representational capacity with minimal
-overhead \cite{hu2018senet}. The motivation for using a lightweight attention mechanism is consistent with the goal of improving robustness without greatly increasing model size
-and is aligned with compact FER approaches such as CERN \cite{gera2022cern}.
+The adaptation occurred in three steps:
 
-\subsubsection{Loss Function and Class Imbalance}
+\textbf{Version 1: Original Full Fine-Tuning}
+The first test used the entire IR50 architecture, including the original classification head.
+\begin{itemize}
+    \item \textbf{The Problem:} The original head flattened the spatial grid into a 25,088-dimensional vector and sent it into a massive linear layer. This single layer had 12.8 million random parameters, accounting for almost half of the whole model.
+    \item \textbf{Result:} Training all 27 million parameters on small datasets caused rapid overfitting. The massive linear layer memorized exact spatial positions, and the high learning rate ruined the pre-trained weights.
+\end{itemize}
 
-Class imbalance is handled through the objective function, meaning the loss function that the model minimizes during training. In standard classification, the model is
-trained by minimizing cross-entropy loss. With imbalanced data, standard cross-entropy can be dominated by majority classes because they appear more frequently and therefore
-contribute more gradient updates. To address this, we modify the training objective by using class-balanced focal loss. The class-balanced component assigns larger weights to
-underrepresented classes using the effective number of samples \cite{cui2019classbalanced}, while the focal component reduces the contribution of well-classified (easy) samples
-so that the model continues learning from harder examples \cite{lin2017focal}. Therefore, we use standard shuffling and address imbalance through the loss rather than through
-a \texttt{WeightedRandomSampler}.
+\textbf{Version 2: Layer Freezing and the Memorization Problem}
+To protect the pre-trained feature extractors, we froze the early layers (\texttt{input\_layer}, \texttt{body1}, \texttt{body2}, and \texttt{body3}), which contain about 9 million parameters.
+\begin{itemize}
+    \item \textbf{Methodology:} We could not freeze the entire backbone because emotion classification requires the network to identify specific facial features that a face recognition model might ignore. Therefore, we kept the final convolutional block (\texttt{body4}) trainable.
+\end{itemize}
+
+\textbf{Version 3: The Light Head Architecture}
+To stop the memorization while keeping \texttt{body4} trainable, we built a new head for the model.
+\begin{itemize}
+    \item \textbf{Methodology:} We removed the 12.8-million-parameter head and replaced it with a ``Light Head'' containing only 795,000 parameters.
+    \item \textbf{Spatial Attention Integration:} Using a standard Global Average Pooling (GAP) layer fixes the parameter problem but destroys spatial information. Human emotions are local, making spatial context critical. We added a Spatial Attention module (Conv1x1 followed by a Sigmoid activation) before the GAP layer. This module learns to give weights to important spatial areas before the GAP layer reduces the dimensions.
+\end{itemize}
+
+\subsubsection{Alternative Architectures}
+During the evaluation phase, three low-parameter architectures were tested to compare different modern deep learning paradigms. Adapting these models for $64 \times 64$ inputs required specific architectural modifications, primarily reducing spatial downsampling.
+
+\begin{itemize}
+    \item \textbf{Vim (Vision Mamba, $\sim$7M parameters):} Vim \cite{zhu2024visionmambaefficientvisual} was chosen because it is a novel model challenging standard Transformers by utilizing bidirectional State Space Models (SSMs), promising exceptionally low GPU memory usage. To adapt it for $64 \times 64$ images, the patch size was changed from $16 \times 16$ to $8 \times 8$ to provide a functional sequence length of 64 tokens.
+    \item \textbf{CCT-7 (Compact Convolutional Transformer, $\sim$4M parameters):} CCT-7 \cite{hassani2022escapingbigdataparadigm} was selected to test a small Transformer specifically designed to handle small images by using a convolutional tokenizer instead of linear patch embeddings.
+    \item \textbf{ConvNeXt V2 Atto ($\sim$3.7M parameters):} This model \cite{woo2023convnextv2codesigningscaling} was chosen to evaluate how a state-of-the-art pure Convolutional Neural Network operates in a constrained parameter regime. The original architecture features a stem convolution with a stride of 4. For a $64 \times 64$ image, this immediately shrinks the feature map to $16 \times 16$. The stem stride was explicitly changed to 1 to preserve spatial information.
+\end{itemize}
+
+\subsubsection{EfficientNetV2-S Adaptations}
+EfficientNetV2-S \cite{tan2021efficientnetv2smallermodelsfaster} was selected for its MBConv blocks and Squeeze-and-Excitation (SE) attention, which effectively amplify emotional markers like micro-expressions while suppressing background noise.
+
+\textbf{Architectural and Augmentation Adaptations}
+To process $64 \times 64$ images effectively, two major pipeline adjustments were executed:
+\begin{itemize}
+    \item \textbf{Stem Stride Fix:} The original stem stride of 2 was reduced to 1. This modification preserved the full spatial resolution through the initial layers, preventing the immediate loss of fine facial details.
+    \item \textbf{Minimized Destructive Augmentation:} Initial training with standard ImageNet settings (Mixup $\alpha=0.8$) obliterated facial features. We implemented a low-interference pipeline to minimize data destruction while maintaining regularization. This included reducing Mixup to 0.2, limiting CutMix to a maximum of 0.3, and using gentle affine transformations. This ensured that while the model was forced to reconstruct features, the core emotional signal remained intact.
+\end{itemize}
 
 \subsection{Explainable AI}
 
@@ -198,12 +205,12 @@ decision of the model. For out task we experimented with two different methods:
 The grad-cam method is widely used to explain computer vision models. The algorithm works by analyzing the gradients used by the last convolutional layer and assigning a level of 
 importance for each neuron's output for the final classification of the image \cite{DBLP:journals/corr/SelvarajuDVCPB16}. However this approach did not seem to work as well as we hoped 
 for our model. Applying grad-cam to our model's last convolutional layer resulted in a coarse and inaccurate heatmap. To combat this problem we experimented with using the previous 
-convolutional layers as the base layer for grad-cam which yielded strongly improved results.
+convolutional layers as the base layer for grad-cam which yielded strongly improved results as in Figure \ref{fig:gradcam}.
 
 The poor performance of the grad-cam method is a result of the heavy downsampling during our model's forward pass. The resolution ($8 \times 8$) of the final feature maps lacks sufficient 
 spacial information to effectively reconstruct the importance of the low resolution input. This also explains why we achieved better results on a layer using higher resolution feature maps.
 
-\begin{figure}[h]
+\begin{figure}
     \centering
     \begin{subfigure}{0.4\columnwidth}
         \includegraphics[scale=0.3]{figures/Layer_4_GradCAM.png}
