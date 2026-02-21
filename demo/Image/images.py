@@ -12,6 +12,8 @@ import os
 import argparse
 import csv
 import math
+from os.path import isdir
+from pathlib import Path
 
 from PIL import Image
 import numpy as np
@@ -28,9 +30,15 @@ class EvalDataset(Dataset):
         self.images = []
         self.transform = transform
 
-        for img in os.listdir(root):
-            filePath = os.path.join(root, img)
-            self.images.append(filePath)
+        self._getDir(root) 
+
+    def _getDir(self, root):
+       for file in os.listdir(root):
+            filePath = os.path.join(root, file)
+            if os.path.isdir(filePath):
+                self._getDir(filePath)
+            else:
+                self.images.append(filePath) 
 
     def __len__(self):
         return len(self.images)
@@ -55,11 +63,15 @@ def formatProbs(probs: list[list[float]]):
     return result
 
 def main(input: str, output: str) -> None:
+
+    filepath = Path(__file__)
+    weightsPath = filepath.parent.absolute() / "ResNet18_trained.pth" 
+
     output_headers = ["Filepath", "Anger", "Disgust", "Fear", "Happiness", "Sadness", "Surprise"]
 
     model = ResNet18SE()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.load_state_dict(torch.load("ResNet18_trained.pth", weights_only=False, map_location=device))
+    model.load_state_dict(torch.load(weightsPath, weights_only=False, map_location=device))
 
     transform = transforms.Compose([
         transforms.ToTensor(),
