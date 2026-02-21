@@ -5,6 +5,29 @@ A comprehensive repository for emotion classification using various deep learnin
 | GradCAM | Integrated Gradients |
 |---------|---------------------|
 | ![GradCAM Output](resources/XAI_reactions.gif) | ![Integrated Gradients Output](resources/XAI_IG_reactions.gif) |
+
+## Project Structure
+
+Here is an overview of the main directories in this repository:
+
+*   **`demo`**: Contains scripts to demonstrate the emotion classifier in different contexts:
+    *   **`Images`**: Processes a folder of images and outputs a CSV of predicted emotion probabilities.
+    *   **`Video`**: Processes a video or GIF, outputting a new file overlaid with bounding boxes, predictions, and Exaplainable AI (XAI) heatmaps (GradCAM or Integrated Gradients).
+    *   **`WebcamDemo`**: Real-time emotion classification on a live webcam feed, with optional live XAI headmaps.
+*   **`models`**: Contains contributor-specific experiments and distinct architectures (Aleks, Dmytro, Daniel, Tiago). The specific architectures tested include:
+    *   **ResNet18** (Including SE, CBAM, and LReLU variants)
+    *   **EfficientNet** (V1 and V2 variations)
+    *   **Vision Mamba (Vim)**
+    *   **Compact Convolutional Transformer (CCT)**
+    *   **ConvNeXt** (V2 Atto, Custom EmoNeXt)
+    *   **VGGNet & GoogLeNet**
+    *   **Custom CNNs** (CNN5, CERNbased)
+*   **`preprocessing`**: Pipeline scripts (filters, deduplication, resizing) used to clean and normalize the datasets before training.
+*   **`reports`**: Project documentation, analysis figures, and the preliminary/final reports.
+*   **`resources`**: Static assets, including test videos, sample GIFs, and outputs.
+*   **`transfer_learning`**: Scripts focused on fine-tuning pre-trained models (specifically IR50).
+*   **`XAI_testing`**: Experimental code evaluating various Explainable AI methods (some approaches here were exploratory and did not end up in the final pipeline).
+
 ## Demo
 
 The demo demonstrates real-time emotion classification on video files or GIFs. It detects faces, classifies their prevailing emotion, and optionally overlays visual explanations (heatmaps) to show which parts of the face contributed most to the decision.
@@ -48,17 +71,6 @@ The `process_video.py` script handles the entire inference pipeline:
 5.  **XAI Overlay**: Generates heatmaps using **GradCAM** or **Integrated Gradients** to visualize model focus.
 6.  **Output**: Annotates the video with bounding boxes, emotion labels, confidence scores, and emojis. Saves as video or GIF depending on the output extension.
 
-## Models
-
- The repository contains implementations of several state-of-the-art models for emotion recognition, organized by contributor/experiment:
-
-*   **`models/dmytro`**:
-    *   **EfficientNetV2**: Multiple variations (v1, v2, v4, v5) experimenting with optimizers (SGD, AdamW), loss functions (LDAM, Class-Balanced Focal Loss), and resolution tuning.
-    *   **Vision Mamba (Vim)**: Experiments with attention-free state space models for vision.
-    *   **CCT (Compact Convolutional Transformer)**: Lightweight transformer-based models.
-    *   **ConvNeXt**: Modern ConvNet architectures.
-*   **`models/aleks`**:
-    *   **ResNet18**: Baseline and improved versions (ResNet18-SE) incorporating Squeeze-and-Excitation blocks and specialized training strategies.
 
 ## Preprocessing
 

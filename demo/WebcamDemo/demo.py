@@ -287,7 +287,7 @@ class EmotionDemo:
                 cached_results = [] 
                 
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) #makes the model do detection faster in grayscale
-                faces = self.face_cascade.detectMultiScale(gray, 1.1, 5, minSize=(30, 30))
+                faces = self.face_cascade.detectMultiScale(gray, 1.1, 8, minSize=(30, 30))
 
                 # Current frame detections
                 current_frame_data = []
@@ -427,8 +427,8 @@ class EmotionDemo:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Emotion Classification Demo")
     parser.add_argument("--checkpoint", type=str, default=MODEL_CHECKPOINT_PATH_RESNET18, help="Path to the model checkpoint file. Defaults to bundled ResNet18 checkpoint.")
-    parser.add_argument("--xai", type=str, choices=["gradcam", "ig", "none"], default="none",
-                        help="XAI overlay method: gradcam, ig (integrated gradients), or none (default).")
+    parser.add_argument("--xai", type=str, choices=["gradcam", "ig", "none"], default="ig",
+                        help="XAI overlay method: gradcam, ig (integrated gradients) [default], or none.")
     
     args = parser.parse_args()
     
