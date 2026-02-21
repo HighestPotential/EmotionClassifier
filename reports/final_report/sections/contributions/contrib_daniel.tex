@@ -1,11 +1,17 @@
 \begin{description}
   \item [Dupicate finder]: A class that finds duplicate images
+
     This class can be configured the pHash or dHash algorithm for fuzzy hashing. It exposes 
     a method called \texttt{find\_duplicates} expects a list of filepaths as an input. The 
-    given files are then loaded in batches, hashed and stored in a Dictionary if the hamming distance is higher than a given threshold. The Dictionary is used to avoid unnecessary comparisons (images are in the same "Bucket if the first 32 Bits match"). The method returns a list of paths to duplicte images for further processing.
+    given files are then loaded in batches, hashed and stored in a Dictionary if the hamming
+    distance is higher than a given threshold. The Dictionary is used to avoid unnecessary 
+    comparisons (images are in the same "Bucket if the first 32 Bits match"). The method returns 
+    a list of paths to duplicte images for further processing.
 
   \item [Image demo]: A script that processes all images in a directory
-    This script expects the path to a directory filled with images, loads all images in batches, loads our model and evaluates all images. The resulting 
-    probabilites for each emotion are then written into a csv file with the related filepath
+
+    This script expects the path to a directory filled with images, loads all images in batches,
+    loads our model and evaluates all images. The resulting probabilites for each emotion are then
+    written into a csv file with the related filepath
 
 \end{description}

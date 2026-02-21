@@ -49,6 +49,9 @@ Overall, both attention variants performed similarly in the sense that they achi
 
 \subsubsection{MobileNet V2}
 
+With $\approx 3.5$M parameters MobileNet V2 is one of the smallest Networks we implemented. Sadly the low parameter count and adaptation to images of size $64 \times 64$ were 
+incompatible with out goal of effective emotion recognition. The model only achieved an accuracy of $66 \%$ on the evaluation data and was hence discarded from future experiments.
+
 \subsubsection{Other ResNet implementations}
 
 Regarding the high accuracy of the ResNet18 + SE implementation ResNet34 and ResNet50 were also trained and evaluated. However the training process was less efficient since 
