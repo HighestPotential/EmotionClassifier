@@ -39,7 +39,7 @@ The first test used the entire IR50 architecture, including the original classif
 \subsection{Alternative Architectures Evaluation}
 
 \subsubsection{ResNet18+SE vs. ResNet18+CBAM}
-To evaluate whether a stronger attention mechanism improves cross-dataset generalization, we replaced the squeeze-and-excitation (SE) blocks in our ResNet18 backbone with CBAM and compared both variants under the same training protocol. In both cases, the models were trained on the aggregated training corpus while explicitly excluding CK+ and KDEF. These two datasets were then used as independent test sets to measure generalization to unseen, well-controlled benchmark distributions.
+To evaluate whether a stronger attention mechanism improves cross-dataset generalization, we replaced the squeeze-and-excitation (SE) blocks in our ResNet18 backbone with CBAM \cite{woo2018cbam} and compared both variants under the same training protocol. In both cases, the models were trained on the aggregated training corpus while explicitly excluding CK+ and KDEF. These two datasets were then used as independent test sets to measure generalization to unseen, well-controlled benchmark distributions.
 
 Overall, both attention variants performed similarly in the sense that they achieved reasonable accuracy on the held-out datasets, but SE consistently yielded higher test accuracy. ResNet18+SE reached 84.69\% on CK+ and 67.33\% on KDEF, whereas ResNet18+CBAM achieved 81.97\% on CK+ and 62.67\% on KDEF. On the global held-out evaluation set ("All"), ResNet18+SE achieved 68.47\% compared to 63.94\% for ResNet18+CBAM. These results suggest that the additional spatial attention component in CBAM did not translate into improved robustness for our low-resolution ($64 \times 64$) FER setting, while the simpler channel-only SE mechanism provided slightly more stable generalization across datasets.
 
@@ -119,7 +119,7 @@ The deployment of LDAM-DRW directly addresses this disparity. By enforcing wider
 
 \subsection{GAN}
 
-Inspired by the work  with Super-Resolution Generative Adversarial Network \cite{Siam2022EmotionDetection} we decided to test with a 2x upscaling factor applied at our 64x64 images and then resize it back to 64x64.
+Inspired by the work with Super-Resolution Generative Adversarial Network \cite{Siam2022EmotionDetection} we decided to test with a 2x upscaling factor applied at our 64x64 images and then resize it back to 64x64.
 
 
 Furthermore, a Super Resolution Generative Adversarial Network (SRGAN) method is a GAN that can convert low-resolution images into high-resolution and realistic images. \cite{WEI2024127207}
@@ -131,7 +131,7 @@ The chosen GAN was GFPGAN, a practical algorithm for real-world face restoration
 
 \subsection{Dual-Input Training}
 
-Inspired by the paper about CERN\cite{GERA20229} the dual-input strategy was implemented. It consists of giving the training process the same image as two inputs and the correct label. The first image is the normal one and the second is augmented. So in order to receive the correct result, the model has to predict both versions of the image correctly. The results with the dual-input were outperformed by the normal training. It also has increased overfitting, a difference bigger than 10\% (86,45\% to 76,15\%) between train and evaluation accuracy.
+Inspired by the paper about CERN \cite{GERA20229} the dual-input strategy was implemented. It consists of giving the training process the same image as two inputs and the correct label. The first image is the normal one and the second is augmented. So in order to receive the correct result, the model has to predict both versions of the image correctly. The results with the dual-input were outperformed by the normal training. It also has increased overfitting, a difference bigger than 10\% (86.45\% to 76.15\%) between train and evaluation accuracy.
 
 \subsection{CERN-Based Architecture}
 
