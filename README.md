@@ -79,6 +79,39 @@ The standard preprocessing pipeline includes the following steps:
 7.  **`ResizingTo64`**: Resizes the cropped face to a standard 64x64 resolution.
 8.  **`ToRGB`**: Converts images to 3-channel RGB.
 
+### Example Pipeline Configuration
+To run the preprocessing, you configure the `steps` array in `preprocessing/pipeline/run_preprocessing.py`. For example, for **EmoSet**:
+
+```python
+# In run_preprocessing.py
+steps = [
+    # ... your filter and step instances here ...
+    FaceExistenceFilter(),
+    CroppingFace(),
+    ResizingTo64(),
+    ToRGB()
+]
+```
+
+### Dataset Preprocessing Summary
+
+The following table details the specific preprocessing steps applied to each dataset used in this project:
+
+| Dataset | Preprocessing Steps | Classes Removed | Classes Kept |
+| :--- | :--- | :--- | :--- |
+| **EmoSet** (118k labeled) | FaceExistenceFilter, CroppingFace, ResizingTo64, ToRGB | - | - |
+| **ExpW** (normal, not cleaned) | CroppingFace, FaceExistenceFilter (with high accuracy), ResizingTo64, ToRGB | disgust, sadness | anger, happiness (among others) |
+| **jaffe** | ResizingTo64, ToRGB | - | - |
+| **KDEF** | ResizingTo64, ToRGB | - | - |
+| **NHFI** | ResizingTo64, ToRGB | - | - |
+| **NONAME** | CroppingFace, ResizingTo64, ToRGB | - | - |
+| **WSEFEP** | ResizingTo64, ToRGB | - | - |
+| **AffectNet** | ResizingTo64, ToRGB | - | - |
+| **CKplus** | ResizingTo64, ToRGB | - | - |
+| **FERPlus** | ResizingTo64, ToRGB | - | - |
+| **RAF-DB** | ResizingTo64, ToRGB | - | - |
+| **MMAFEDB** | ResizingTo64, ToRGB | - | - |
+
 ### Deduplication
 A **Duplication Pre-processing** step (refer to `preprocessing/image_duplicates.py`) is used to clean datasets. It employs **Difference Hashing (dHash)** to identify and remove near-duplicate images, ensuring that the model doesn't overfit to repeated data.
 
