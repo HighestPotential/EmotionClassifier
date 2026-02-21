@@ -116,16 +116,14 @@ Towards the end of the project, some of us adopted a 90\%/10\% split strategy in
 \subsection{Architectural Adaptations}
 
 \subsubsection{Basic CNNs and ResNet18 models}
-To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial 7×7 convolution was replaced with a 3×3 kernel and the input resolution was reduced from 224×224 to 64×64. 
+To ensure experimental comparability, two baseline convolutional neural networks (3-layer and 5-layer CNNs) were implemented alongside a modified version of ResNet-18, in which the initial $7 \times 7$ convolution was replaced with a $3 \times 3$ kernel and the input resolution was reduced from $224 \times 224$ to $64 \times 64$. 
 
 \subsubsection{ResNet18 with Squeeze-and-Excitation}
 Our model is based on ResNet18 and is extended with a squeeze-and-excitation (SE) attention module. ResNet18 serves as a stable baseline with moderate capacity (roughly 11--12 million parameters). Results from compact FER literature, including CERN, suggest that attention mechanisms can improve performance across different model sizes, supporting our use of SE as a low-overhead architectural enhancement \cite{GERA20229}.
 
-The input to our network is a standardized RGB face image of size 64x64. Since this is much smaller than the standard ImageNet setting (224x224), we avoid the original ResNet stem (7x7 stride-2 convolution plus stride-2 max pooling), because it would reduce spatial resolution too early and remove fine facial details. Instead, we use a 3x3 convolution with stride 1 and omit early pooling to preserve spatial information (Stanford CS231n, 2017).
+The input to our network is a standardized RGB face image of size 64x64. Since this is much smaller than the standard ImageNet setting (224x224), we avoid the original ResNet stem (7x7 stride-2 convolution plus stride-2 max pooling), because it would reduce spatial resolution too early and remove fine facial details. Instead, we use a 3x3 convolution with stride 1 and omit early pooling to preserve spatial information \cite{cs231n2017}.
 
-For this reason, we use a $3 \times 3$ convolution with stride 1 in the first layer and omit early pooling, so the model preserves more spatial information in the early feature maps. This is also a common modification when ResNet-style models are adapted to small images (e.g., CIFAR-sized inputs), because preserving spatial detail early tends to improve learning on low-resolution inputs.
-
-After the stem, we follow the standard ResNet18 design with four residual stages and stage-wise downsampling. Skip connections stabilize optimization by learning residual refinements rather than fully rewriting features (He et al., 2016). After the final stage, global average pooling and a dropout-regularized linear layer produce logits for the six emotion classes.
+After the stem, we follow the standard ResNet18 design with four residual stages and stage-wise downsampling. Skip connections stabilize optimization by learning residual refinements rather than fully rewriting features \cite{he2016resnet}. After the final stage, global average pooling and a dropout-regularized linear layer produce logits for the six emotion classes.
 
 We augment the ResNet18 backbone with squeeze-and-excitation (SE) blocks, which perform lightweight channel-wise attention by learning per-channel scaling factors from globally pooled features, improving representational capacity with minimal overhead \cite{hu2018senet}. The motivation for using a lightweight attention mechanism is consistent with the goal of improving robustness without greatly increasing model size and is aligned with compact FER approaches such as CERN \cite{GERA20229}.
 
