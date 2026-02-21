@@ -8,10 +8,30 @@
     comparisons (images are in the same "Bucket if the first 32 Bits match"). The method returns 
     a list of paths to duplicte images for further processing.
 
+  \item [Blur filter]: A class that measures the blurriness of a given image
+
+    This class is part of the group's preprocessing pipeline. Given an image the class computes
+    the laplacian variance of the input and removes it if the variance is lower than a given threshold. 
+    This implementation was later adapted to use the \textit{fast fourier transform} (FFT) to classify the 
+    image.
+
+  \item [Different Model implementations]: Different custom implementations that were trained
+
+    During the development phase of the project I wanted to evaluate as many different model architectures 
+    as possible. Due to the fixed input size of ($64 \times 64$) all models were implemented from scratch 
+    and modified to downsample less aggressively. The developed models were all trained using a custom training 
+    script.
+
+  \item [Model Evaluation script]: A script that given a Model implementation measures its accuracy
+
+    This script was later used by all members of the group to measure and compare their model's performance on 
+    unseen datasets.
+  
   \item [Image demo]: A script that processes all images in a directory
 
     This script expects the path to a directory filled with images, loads all images in batches,
     loads our model and evaluates all images. The resulting probabilites for each emotion are then
     written into a csv file with the related filepath
+
 
 \end{description}
