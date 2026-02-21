@@ -4,6 +4,14 @@ import torch.nn.functional as F
 
 from torchvision.models import GoogLeNet
 
+EmoNeXt_Architecture = {
+        "Tiny": ([96, 192, 384, 768], [3, 3, 9, 3]),
+        "Small": ([96, 192, 384, 768], [3, 3, 27, 3]),
+        "Base": ([128, 256, 512, 1024], [3, 3, 27, 3]),
+        "Large": ([192, 384, 768, 1536], [3, 3, 27, 3]),
+        "XLarge": ([256, 512, 1024, 2048], [3, 3, 27, 3]),
+}
+
 class VGGNet (nn.Module):
 
     def __init__(self):
@@ -79,7 +87,7 @@ class VGGNet (nn.Module):
         return x
 
 def BuildGoogLeNet(numClasses: int = 6):
-    return GoogLeNet(num_classes=6, aux_logits=False, init_weights=False)
+    return GoogLeNet(num_classes=numClasses, aux_logits=False, init_weights=False)
 
 
 class SE_Block(nn.Module):
@@ -88,7 +96,7 @@ class SE_Block(nn.Module):
         self.squeeze = nn.AdaptiveAvgPool2d(1)
         self.excitation = nn.Sequential(
             nn.Linear(c, c // r, bias=False),
-            nn.ReLU(inplace=True),
+            nn.SiLU(inplace=True),
             nn.Linear(c // r, c, bias=False),
             nn.Sigmoid()
         )
@@ -136,25 +144,18 @@ class ConvNeXt_Block(nn.Module):
         x = self.layer_scale(x)
         x = x + residual
         
-        del residual
-        torch.cuda.empty_cache()
-        
         return x
     
 class ConvNeXt_Module(nn.Module):
     def __init__(self, dim: int, amount: int):
         super(ConvNeXt_Module, self).__init__()
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        convModules = [ConvNeXt_Block(dim).to(self.device) for _ in range(amount)]
-        self.blocks = nn.ModuleList(modules=convModules)
+        convModules = [ConvNeXt_Block(dim) for _ in range(amount)]
+        self.blocks = nn.Sequential(*convModules)
 
 
     def forward(self, x):
-        for f in self.blocks:
-            x = f(x)
-            torch.cuda.empty_cache()
-
+        self.blocks(x)
         return x
     
 class EmoNeXt_Variable(nn.Module):
@@ -249,3 +250,224 @@ class EmoNeXt_Variable(nn.Module):
         x = self.fc(x)
 
         return x
+    
+class ResidualBlock(nn.Module):
+    def __init__(self, channels: int, input: int, stride: int = 1):
+        super(ResidualBlock, self).__init__()
+        self.inConv =  nn.Sequential(
+            nn.Conv2d(channels, input * 4, kernel_size=1,stride=stride),
+            nn.BatchNorm2d(input * 4)
+            )
+        
+        self.conv1 = nn.Conv2d(channels, input, kernel_size=1, stride=1)
+        self.bn1 = nn.BatchNorm2d(input)
+
+        self.conv2 = nn.Conv2d(input, input, kernel_size=3, stride=stride, padding=1)
+        self.bn2 = nn.BatchNorm2d(input)
+
+        self.conv3 = nn.Conv2d(input, input * 4, kernel_size=1, stride=1)
+        self.bn3 = nn.BatchNorm2d(input * 4)
+
+        self.relu = nn.ReLU()
+
+
+    def forward(self, x):
+        residual = self.inConv(x)
+
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = self.relu(x)
+
+        x = self.relu(x + residual)
+
+        return x
+
+class ResNet50(nn.Module):
+    def __init__(self):
+        super(ResNet50, self).__init__()
+
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3) # (64, 64, 3) -> (32, 32, 64)   Padding added by me so that images does not become too small
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # (32, 32, 64) -> (16, 16, 64)
+
+        self.relu = nn.ReLU()
+
+        self.block1 = nn.Sequential(
+            ResidualBlock(64, 64),
+            ResidualBlock(256, 64),
+            ResidualBlock(256, 64)
+        ) # (16, 16, 64) -> (16, 16, 256)
+
+        self.se1 = SE_Block(256)
+
+        self.block2 = nn.Sequential(
+            ResidualBlock(256, 128, stride=2),
+            ResidualBlock(512, 128),
+            ResidualBlock(512, 128)
+        ) # (16, 16, 256) -> (8, 8, 512)
+
+        self.se2 = SE_Block(512)
+
+        self.block3 = nn.Sequential(
+            ResidualBlock(512, 256, stride=2),
+            ResidualBlock(1024, 256),
+            ResidualBlock(1024, 256),
+            ResidualBlock(1024, 256),
+            ResidualBlock(1024, 256),
+            ResidualBlock(1024, 256)
+        ) # (8, 8, 512) -> (4, 4, 1024)
+
+        self.se3 = SE_Block(1024)
+
+        self.block4 = nn.Sequential(
+            ResidualBlock(1024, 512, stride=2),
+            ResidualBlock(2048, 512),
+            ResidualBlock(2048, 512)
+        ) # (4, 4, 1024) -> (2, 2, 2048)
+
+        self.pool2 = nn.AdaptiveAvgPool2d((1, 1))
+
+        self.fc1 = nn.Linear(2048, 6)
+    
+    def forward(self, x: torch.Tensor):
+        x = self.conv1(x)
+        x = self.pool1(x)
+
+        x = self.block1(x)
+        x = self.se1(x)
+
+        x = self.block2(x)
+        x = self.se2(x)
+
+        x = self.block3(x)
+        x = self.se3(x)
+
+        x = self.block4(x)
+
+        x = self.pool2(x)
+
+        x = x.squeeze()
+
+        x = self.fc1(x)
+
+        return x
+    
+class InvertedResidual(nn.Module):
+    def __init__(self, inChn: int, outChn: int, exp: int, stride: int = 1):
+        super(InvertedResidual, self).__init__()
+        expChn = inChn * exp
+
+        self.residual = stride == 1 and inChn == outChn
+
+        self.conv1 = nn.Conv2d(inChn, expChn, kernel_size=1, bias=False)
+        self.conv2 = nn.Conv2d(expChn, expChn, kernel_size=3, padding=1, stride=stride, groups=expChn, bias=False)
+        self.conv3 = nn.Conv2d(expChn, outChn, kernel_size=1, bias=False)
+
+        self.relu6 = nn.ReLU6()
+        
+        self.bn1 = nn.BatchNorm2d(expChn)
+        self.bn2 = nn.BatchNorm2d(expChn)
+        self.bn3 = nn.BatchNorm2d(outChn)
+        
+
+    def forward(self, x):
+        y = self.conv1(x)
+        y = self.bn1(y)
+        y = self.relu6(y)
+
+        y = self.conv2(y)
+        y = self.bn2(y)
+        y = self.relu6(y)
+
+        y = self.conv3(y)
+        y = self.bn3(y)
+
+        if self.residual:
+            y += x
+        
+        return y
+
+class MobileNetV2(nn.Module):
+    def __init__(self):
+        super(MobileNetV2, self).__init__()
+        self.act = nn.SiLU()
+
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=2, padding=1, bias=False) # (64, 64, 3) -> (32, 32, 32)
+        self.bn1 = nn.BatchNorm2d(32)
+
+        self.res1 = InvertedResidual(32, 16, 1, 1) # (32, 32, 32) -> (32, 32, 16)
+        self.res2 = nn.Sequential(
+            InvertedResidual(16, 24, 6, 2),
+            InvertedResidual(24, 24, 6, 1)
+        ) # (32, 32, 16) -> (16, 16, 24)
+        self.res3 = nn.Sequential(
+            InvertedResidual(24, 32, 6, 2),
+            InvertedResidual(32, 32, 6, 1),
+            InvertedResidual(32, 32, 6, 1)
+        ) # (16, 16, 24) -> (8, 8, 32)
+        self.res4 = nn.Sequential(
+            InvertedResidual(32, 64, 6, 2),
+            InvertedResidual(64, 64, 6, 1),
+            InvertedResidual(64, 64, 6, 1),
+            InvertedResidual(64, 64, 6, 1)
+        ) # (8, 8, 32) -> (4, 4, 64)
+        self.res5 = nn.Sequential(
+            InvertedResidual(64, 96, 6, 1),
+            InvertedResidual(96, 96, 6, 1),
+            InvertedResidual(96, 96, 6, 1)
+        ) # (4, 4, 64) -> (4, 4, 96)
+        self.se1 = SE_Block(96)
+
+        self.res6 = nn.Sequential(
+            InvertedResidual(96, 160, 6, 1), # Original had stride=2
+            InvertedResidual(160, 160, 6, 1),
+            InvertedResidual(160, 160, 6, 1)
+        ) # (4, 4, 96) -> (4, 4, 160)
+        self.se2 = SE_Block(160)
+
+        self.res7 = InvertedResidual(160, 320, 6, 1) # (4, 4, 160) -> (4, 4, 320)
+        self.se3 = SE_Block(320)
+        
+        self.conv2 = nn.Conv2d(320, 1280, kernel_size=1, bias=False) # (4, 4, 320) -> (4, 4, 1280)
+        self.bn2 = nn.BatchNorm2d(1280)
+
+        self.pool = nn.AdaptiveAvgPool2d((1, 1)) # (4, 4, 1280) -> (1, 1, 1280)
+
+        self.fc = nn.Sequential(
+            nn.Linear(1280, 1024),
+            nn.SiLU(),
+            nn.Dropout(0.5),
+            nn.Linear(1024, 6)
+        )
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.act(x)
+
+        x = self.res1(x)
+        x = self.res2(x)
+        x = self.res3(x)
+        x = self.res4(x)
+        x = self.se1(self.res5(x))
+        x = self.se2(self.res6(x))
+        x = self.se3(self.res7(x))
+
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.act(x)
+
+        x = self.pool(x)
+
+        x = torch.flatten(x, 1)
+
+        x = self.fc(x)
+        return x
+        
