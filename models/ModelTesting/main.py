@@ -10,9 +10,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from torchvision import models
 
-from structure2tryWithoutTestsCorrect import CERN
 
 @dataclass
 class CNNContext:
@@ -78,11 +76,14 @@ if __name__ == "__main__":
 
     normalLoader = DataLoader(normalLoader, batch_size=batchSize, shuffle=False)
 
-    #model = models.GoogLeNet(num_classes=6, aux_logits=False)
-    model = CERN()
+    model: nn.Module = None # Add instance of Model to test
+
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     saveFile = weights
+
+    model.eval()
+    model.to(device)
 
     ctx = CNNContext(
             model=model,
