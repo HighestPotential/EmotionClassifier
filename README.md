@@ -4,7 +4,7 @@ A comprehensive repository for emotion classification using various deep learnin
 
 | GradCAM | Integrated Gradients |
 |---------|---------------------|
-| ![GradCAM Output](demo/XAI_Gradcam_reactions.gif) | ![Integrated Gradients Output](demo/XAI_IG_reactions.gif) |
+| ![GradCAM Output](resources/XAI_Gradcam_reactions.gif) | ![Integrated Gradients Output](resources/XAI_IG_reactions.gif) |
 ## Demo
 
 The demo demonstrates real-time emotion classification on video files or GIFs. It detects faces, classifies their prevailing emotion, and optionally overlays visual explanations (heatmaps) to show which parts of the face contributed most to the decision.
