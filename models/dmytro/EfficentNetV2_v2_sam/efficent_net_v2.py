@@ -39,28 +39,21 @@ DATASETS = ['AffectNet', 'CKplusIm', 'FERPlus', 'RAF-DB', 'KDEFFormated',\
      'jaffeFormated', 'MMAFEDB', 'ExpWFormated', 'EmoSet-118k', 'NHFI'] # 'NONAMEFormated',
 
 # --- Overfitting Fix Hyperparameters ---
-DROP_PATH_RATE = 0.3     # Linear profile handled by timm
-# // CHANGED: Tuned for Facial Expressions
-# MIXUP_ALPHA: Reduced from 0.8 to 0.2. 
-#   High alpha (0.8) makes images look like 50/50 gray slush. 
-#   Low alpha (0.2) keeps images looking like faces, just slightly soft.
+DROP_PATH_RATE = 0.3    
+
 MIXUP_ALPHA = 0.2
-# CUTMIX_ALPHA: Reduced from 1.0 to 0.0 (DISABLED).
-#   Gentle spatial regularization with small patches.
 CUTMIX_ALPHA = 0.1
 LABEL_SMOOTHING = 0.1
 RANDAUG_N = 2
 RANDAUG_M = 9
 WARMUP_EPOCHS = 5     
 
-# --- Augmentation Intensity Settings (The "10-20% Rule") ---
-ROTATION_DEG = 15        # Keep < 15 to avoid rotation artifacts
-TRANSLATE_FRAC = 0.05    # Keep < 0.05 (5%) to prevent cutting off features
-COLOR_JITTER = 0.2       # 20% variance is realistic lighting
-SHARPNESS_FACTOR = 2.0   # 2x sharpness helps define edges in low-res
+ROTATION_DEG = 15        
+TRANSLATE_FRAC = 0.05    
+COLOR_JITTER = 0.2       
+SHARPNESS_FACTOR = 2.0   
 GRAYSCALE_PROB = 0.3    
 
-# --- Dataset Statistics (Calculated from 114k set) ---
 MEAN = [0.4681, 0.4447, 0.4560]
 STD = [0.2327, 0.2227, 0.2224]
 
@@ -75,7 +68,7 @@ if device.type == 'cuda':
 # ## 1. Data Pipeline
 
 # --- Transformations ---
-# We initially load data with basic transforms to calculate stats
+
 transform_raw = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
     transforms.ToTensor()
@@ -136,9 +129,7 @@ if not train_datasets:
 full_train_dataset = torch.utils.data.ConcatDataset(train_datasets)
 full_val_dataset = torch.utils.data.ConcatDataset(val_datasets)
 
-# --- Dynamic Mean/Std Calculation ---
 print("Calculating mean and std of the training dataset...")
-# To speed this up, we can use a large batch size and no grad
 loader = torch.utils.data.DataLoader(full_train_dataset, batch_size=256, shuffle=False, num_workers=NUM_WORKERS)
 
 mean = 0.
@@ -163,26 +154,18 @@ print(f"Calculated Std:  {STD}")
 # --- Final Transforms ---
 # Now we define the real transforms using the calculated stats
 transform_train_final = v2.Compose([
-    # 1. Resize ensures we start at the right grid
     v2.Resize((IMG_SIZE, IMG_SIZE)),
 
-    # 2. Geometric Safety Padding
-    # We pad by 8 pixels (12.5%) using reflection.
-    # This buffer allows us to rotate/shift without introducing black borders.
     v2.Pad(padding=8, padding_mode='reflect'),
 
-    # 3. Geometric Transforms (Mutually Exclusive)
-    # We pick only ONE of these to avoid over-distortion.
-    # ~40% chance of no transform (Identity has double weight)
     v2.RandomChoice([
         v2.RandomRotation(degrees=ROTATION_DEG), 
         v2.RandomAffine(degrees=0, translate=(TRANSLATE_FRAC, TRANSLATE_FRAC)),
-        v2.RandomHorizontalFlip(p=1.0), # Pure flip
+        v2.RandomHorizontalFlip(p=1.0), 
         v2.Identity(),
-        v2.Identity(),  # Extra Identity → ~40% chance of no geometric change
+        v2.Identity(),  
     ]),
 
-    # 4. Crop back to Size
     v2.CenterCrop(IMG_SIZE),
 
     # 5. Photometric Transforms (Stackable)
@@ -193,22 +176,17 @@ transform_train_final = v2.Compose([
             contrast=COLOR_JITTER, 
             saturation=COLOR_JITTER
         )
-    ], p=0.4), # Apply to 40% of images
+    ], p=0.4), 
     
     v2.RandomApply([v2.RandomAdjustSharpness(sharpness_factor=SHARPNESS_FACTOR)], p=0.2),
     v2.RandomApply([v2.RandomAutocontrast()], p=0.2),
     
-    # 6. Rare Grayscale
     v2.RandomGrayscale(p=GRAYSCALE_PROB),
 
-    # 7. Final Norm
     v2.ToImage(), 
     v2.ToDtype(torch.float32, scale=True),
     v2.Normalize(mean=MEAN, std=STD),
 
-    # 8. RandomErasing (conservative: only 15% of images, tiny patches 2-10% area)
-    # At 64x64, scale=(0.02, 0.10) means erasing 1-6 pixels wide — never a full eye/mouth.
-    # Placed AFTER normalize so erased region = mean-zero (neutral, not black).
     v2.RandomErasing(p=0.1, scale=(0.02, 0.10), ratio=(0.3, 3.3), value=0.0),
 ])
 
@@ -265,9 +243,9 @@ print(f"Total Validation Samples: {len(full_val_dataset)}")
 # --- Mixup Fn ---
 mixup_fn = Mixup(
     mixup_alpha=MIXUP_ALPHA, 
-    cutmix_alpha=CUTMIX_ALPHA, # Gentle CutMix (small patches)
-    prob=1.0,                  # Probability of applying Mixup/CutMix
-    switch_prob=0.3,           # 30% chance of CutMix instead of Mixup
+    cutmix_alpha=CUTMIX_ALPHA, 
+    prob=1.0,                  
+    switch_prob=0.3,           
     mode='batch',
     label_smoothing=LABEL_SMOOTHING, 
     num_classes=len(CLASSES)
@@ -284,29 +262,17 @@ def create_cifar_efficientnet():
         drop_path_rate=DROP_PATH_RATE
     )
     
-    # 1. Modify Stem Stride (The "64x64 Fix")
-    # Original is stride=2. We force stride=1 to keep 64x64 resolution at start.
     old_stem = model.conv_stem
     model.conv_stem = nn.Conv2d(
         in_channels=old_stem.in_channels,
         out_channels=old_stem.out_channels,
         kernel_size=old_stem.kernel_size,
-        stride=(1, 1), # CRITICAL FIX
+        stride=(1, 1), 
         padding=old_stem.padding,
         bias=False
     )
-    # Re-init stem
     nn.init.kaiming_normal_(model.conv_stem.weight, mode='fan_out', nonlinearity='relu')
     print("  -> Modified Stem Stride to 1")
-
-    # 2. Modify Stage 2 Stride (Optional but Recommended)
-    # Typically block 1 or 2. In EfficientNetV2, blocks are in model.blocks
-    # We look for the first block that downsamples (stride=2) and set it to 1 if it's early.
-    # Stage 0 is stem. Stage 1 is blocks[0]. Stage 2 is usually blocks[1] or [2].
-    # Let's inspect block strides.
-    # For safety/simplicity in this script without deep inspection loop, we stick to the Stem Fix 
-    # which ensures 64x64 enters the first stage (vs 32x32).
-    # If more aggressive resolution preservation is needed, we would modify `model.blocks[1][0].conv_dw.stride`.
     
     return model
 

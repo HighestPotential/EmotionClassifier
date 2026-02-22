@@ -25,8 +25,6 @@ else:
     if compact_transformers_path not in sys.path:
         sys.path.append(compact_transformers_path)
 
-# --- Configuration ---
-# --- Configuration ---
 BATCH_SIZE = 128     
 ACCUM_STEPS = 1          
 EPOCHS = 300
@@ -47,11 +45,10 @@ CUTMIX_ALPHA = 0.1        # Restored to 0.1 (V1)
 LABEL_SMOOTHING = 0.1     # Restored to 0.1 (V1)
 WARMUP_EPOCHS = 5
 
-# --- Augmentation Intensity Settings (The "10-20% Rule") ---
-ROTATION_DEG = 15        # Keep < 15 to avoid rotation artifacts
-TRANSLATE_FRAC = 0.05    # Keep < 0.05 (5%) to prevent cutting off features
-COLOR_JITTER = 0.2       # 20% variance is realistic lighting
-SHARPNESS_FACTOR = 2.0   # 2x sharpness helps define edges in low-res
+ROTATION_DEG = 15        
+TRANSLATE_FRAC = 0.05    
+COLOR_JITTER = 0.2       
+SHARPNESS_FACTOR = 2.0   
 GRAYSCALE_PROB = 0.3    
 
 MEAN = [0.4681, 0.4447, 0.4560]
@@ -131,7 +128,6 @@ full_val_dataset = torch.utils.data.ConcatDataset(val_datasets)
 
 # --- Dynamic Mean/Std Calculation ---
 print("Calculating mean and std of the training dataset...")
-# To speed this up, we can use a large batch size and no grad
 loader = torch.utils.data.DataLoader(full_train_dataset, batch_size=256, shuffle=False, num_workers=NUM_WORKERS)
 
 mean = 0.
@@ -154,29 +150,19 @@ print(f"Calculated Mean: {MEAN}")
 print(f"Calculated Std:  {STD}")
 
 # --- Final Transforms ---
-# Now we define the real transforms using the calculated stats
 transform_train_final = v2.Compose([
-    # 1. Resize ensures we start at the right grid
     v2.Resize((IMG_SIZE, IMG_SIZE)),
 
-    # 2. Geometric Safety Padding
-    # We pad by 8 pixels (12.5%) using reflection.
-    # This buffer allows us to rotate/shift without introducing black borders.
     v2.Pad(padding=8, padding_mode='reflect'),
 
-    # 3. Geometric Transforms (Mutually Exclusive)
-    # We pick only ONE of these to avoid over-distortion.
-    # ~40% chance of no transform (Identity has double weight)
-    # 3. Geometric Transforms (Mutually Exclusive)
     v2.RandomHorizontalFlip(p=0.5),
     v2.RandomApply([
         v2.RandomAffine(degrees=10, translate=(0.06, 0.06), scale=(0.95, 1.05), shear=3)
     ], p=0.5),
 
-    # 4. Crop back to Size
     v2.CenterCrop(IMG_SIZE),
 
-    # 5. Photometric Transforms (Stackable)
+   # Photometric Transforms (Stackable)
     # It is safe to stack lighting changes because they don't move pixels.
     v2.RandomApply([
         v2.ColorJitter(
@@ -184,22 +170,19 @@ transform_train_final = v2.Compose([
             contrast=COLOR_JITTER, 
             saturation=COLOR_JITTER
         )
-    ], p=0.4), # Apply to 40% of images
+    ], p=0.4), 
     
     v2.RandomApply([v2.RandomAdjustSharpness(sharpness_factor=SHARPNESS_FACTOR)], p=0.2),
     v2.RandomApply([v2.RandomAutocontrast()], p=0.2),
     
-    # 6. Rare Grayscale
     v2.RandomGrayscale(p=GRAYSCALE_PROB),
 
-    # 7. Final Norm
     v2.ToImage(), 
     v2.ToDtype(torch.float32, scale=True),
     v2.Normalize(mean=MEAN, std=STD),
 
-    # 8. RandomErasing (conservative: only 15% of images, tiny patches 2-10% area)
-    # At 64x64, scale=(0.02, 0.10) means erasing 1-6 pixels wide — never a full eye/mouth.
-    # Placed AFTER normalize so erased region = mean-zero (neutral, not black).
+    # RandomErasing (conservative: only 15% of images, tiny patches 2-10% area)
+
     v2.RandomErasing(p=0.15, scale=(0.02, 0.10), ratio=(0.3, 3.3), value=0.0),
 ])
 
@@ -257,8 +240,8 @@ print(f"Total Validation Samples: {len(full_val_dataset)}")
 mixup_fn = Mixup(
     mixup_alpha=MIXUP_ALPHA, 
     cutmix_alpha=CUTMIX_ALPHA, 
-    prob=1.0,                  # Restored to 1.0 (V1)
-    switch_prob=0.5,           # CutMix switch
+    prob=1.0,                 
+    switch_prob=0.5,           
     mode='batch',
     label_smoothing=LABEL_SMOOTHING, 
     num_classes=len(CLASSES)
@@ -282,22 +265,12 @@ def create_cifar_efficientnet():
         in_channels=old_stem.in_channels,
         out_channels=old_stem.out_channels,
         kernel_size=old_stem.kernel_size,
-        stride=(1, 1), # CRITICAL FIX
+        stride=(1, 1), 
         padding=old_stem.padding,
         bias=False
     )
-    # Re-init stem
     nn.init.kaiming_normal_(model.conv_stem.weight, mode='fan_out', nonlinearity='relu')
     print("  -> Modified Stem Stride to 1")
-
-    # 2. Modify Stage 2 Stride (Optional but Recommended)
-    # Typically block 1 or 2. In EfficientNetV2, blocks are in model.blocks
-    # We look for the first block that downsamples (stride=2) and set it to 1 if it's early.
-    # Stage 0 is stem. Stage 1 is blocks[0]. Stage 2 is usually blocks[1] or [2].
-    # Let's inspect block strides.
-    # For safety/simplicity in this script without deep inspection loop, we stick to the Stem Fix 
-    # which ensures 64x64 enters the first stage (vs 32x32).
-    # If more aggressive resolution preservation is needed, we would modify `model.blocks[1][0].conv_dw.stride`.
     
     return model
 

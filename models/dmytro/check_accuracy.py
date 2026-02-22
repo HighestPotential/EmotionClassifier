@@ -20,7 +20,6 @@ if cct_path not in sys.path:
 vim_path = os.path.join(script_dir, 'VIM/Vim')
 if vim_path not in sys.path:
     sys.path.append(vim_path)
-    # Also add the 'vim' subdirectory so internal imports like 'from rope import ...' work
     sys.path.append(os.path.join(vim_path, 'vim'))
 
 # --- Constants ---
@@ -206,12 +205,6 @@ if __name__ == "__main__":
         'NHFI', 'WSEFEPFormated'
     ]
     
-    # Combined Eval/Test
-    # Since we use ConcatDataset for training, we should evaluate on the component eval sets individually to be thorough,
-    # or just the Full Eval set.
-    # User asked: "check the accuracy on test adn val fodlers of the datasets"
-    # This implies iterating over ALL datasets found.
-    
     for ds_name in datasets_to_check:
         print(f"\n--- Checking {ds_name} ---")
         ds_path = os.path.join(dataset_root, ds_name)
@@ -228,5 +221,5 @@ if __name__ == "__main__":
         if test_loader:
             evaluate(model, test_loader, device, name=f"{ds_name} [Test]")
         else:
-            # Only print if verbose? No, user explicitly asked for test check.
+
             pass 
