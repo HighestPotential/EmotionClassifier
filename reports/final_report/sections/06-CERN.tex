@@ -1,0 +1,13 @@
+\section{Extended Description of the CERN Architecture Implementation}
+\label{sec:cern}
+
+
+The CERN architecture is derived from a LightCNN backbone with depths ranging from 9 to 29 layers in its full configuration. LightCNN is designed to provide compact yet discriminative feature representations, particularly for face-related tasks. It employs Max-Feature-Map (MFM) activations, which perform competitive feature selection by suppressing weaker feature responses through channel-wise max operations. This mechanism reduces redundancy, improves generalization, and lowers computational overhead compared to conventional activation functions.
+
+To enhance representational capacity without significantly increasing complexity, the architecture integrates Efficient Channel Attention (ECA). Unlike heavier attention mechanisms, ECA performs lightweight channel-wise recalibration using local cross-channel interaction without dimensionality reduction. This allows the model to emphasize informative feature channels while maintaining computational efficiency.
+
+A central component of the framework is its dual-input training strategy. During training, the network processes both an original image and its augmented counterpart simultaneously. The prediction is considered correct only if label consistency is maintained across both inputs. This constraint encourages the network to learn perturbation-invariant and robust feature representations, improving generalization under variations such as illumination changes, noise, and geometric transformations.
+
+Due to GPU memory constraints on the university server, it was not feasible to replicate the complete architecture including the combined local and global attention modules described in the original formulation. Therefore, a reduced variant consisting of seven convolution layers was implemented. The batch size was limited to 16 samples to remain within available memory limits.
+
+Despite these simplifications, the model remained computationally demanding. Training for 10 epochs required more than 24 hours of runtime. Extended training sessions were occasionally interrupted due to system constraints, making it necessary to implement checkpoint-based continuation to preserve training progress and ensure experimental reproducibility.
