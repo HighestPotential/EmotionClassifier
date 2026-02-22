@@ -5,7 +5,7 @@ A comprehensive repository for emotion classification using various deep learnin
 
 | GradCAM | Integrated Gradients |
 |---------|---------------------|
-| ![GradCAM Output (Layer 3)](resources/_XAI_reactions_layer3.gif) | ![Integrated Gradients Output](resources/XAI_IG_reactions.gif) |
+| ![GradCAM Output (Layer 3)](resources/XAI_reactions_layer3.gif) | ![Integrated Gradients Output](resources/XAI_IG_reactions.gif) |
 
 ## Project Goal
 
