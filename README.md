@@ -5,7 +5,7 @@ A comprehensive repository for emotion classification using various deep learnin
 
 | GradCAM | Integrated Gradients |
 |---------|---------------------|
-| ![GradCAM Output (Layer 3)](resources/XAI_reactions_layer3.gif) | ![Integrated Gradients Output](resources/XAI_IG_reactions.gif) |
+| ![GradCAM Output Layer 3](resources/XAI_reactions_layer3.gif) | ![Integrated Gradients Output](resources/XAI_IG_reactions.gif) |
 
 ## Project Goal
 
@@ -39,6 +39,8 @@ Here is an overview of the main directories in this repository:
 *   **`XAI_testing`**: Experimental code evaluating various Explainable AI methods (some approaches here were exploratory and did not end up in the final pipeline).
 
 ## Model Performance and Efficiency
+
+- **EfficientNetV2**: 88.1% accuracy on CK+
 
 ![Model Accuracy vs. Parameter Count](resources/accuracy_vs_params.png)
 
