@@ -15,10 +15,19 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 import torchvision.transforms as transforms
+from torchvision.models import resnet34, ResNet34_Weights
 
 #CONSTANTS
 DATASETS_BASE: str = os.path.join("..", "..", "ready_to_use_datasets")
-MAX_EPOCHS = 500
+
+train_transform = transforms.Compose([
+    transforms.RandomEqualize(p=0.3),
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.RandomRotation(30),
+    transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
 
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -36,13 +45,13 @@ class CNNContext:
     model: nn.Module
     criterion: nn.CrossEntropyLoss
     optimizer: optim.Optimizer
-    scaler: torch.amp.GradScaler
+    scheduler: optim.lr_scheduler.LRScheduler
     device: torch.device
-    amp: bool
     threshold: float
     epochs: int
     patience: int
     saveFile: str
+    resume: bool
 
 class NumberedList:
     def __init__(self, length):
@@ -79,28 +88,38 @@ def trainLoop(ctx: CNNContext,
     
     counter = 0
     best_loss = float('inf') # float rappresentation of infinity
+
+    if ctx.resume:
+        checkpoint = torch.load(ctx.saveFile, map_location=ctx.device)
+        ctx.model.load_state_dict(checkpoint["model"])
+        ctx.optimizer.load_state_dict(checkpoint["optimizer"])
+        ctx.scheduler.load_state_dict(checkpoint["scheduler"])
+        best_loss = checkpoint["bestLoss"]
     
     for epoch in range(ctx.epochs):
 
-        print(f"TRAINING EPOCH {epoch}\n")
+        print(f"TRAINING EPOCH {epoch + 1}")
 
+        trainLoss = 0
+        trainCorrect = 0
+
+        ctx.model.train()
         for image, label in tqdm(train_loader, desc="Batch", leave=False):
             image = image.to(ctx.device)
             label = label.to(ctx.device)
+            ctx.optimizer.zero_grad()
             
-            ctx.model.train()
-            with torch.autocast(device_type=ctx.device, dtype=torch.float16, enabled=ctx.amp):
-                pred = ctx.model(image)
-                loss = ctx.criterion(pred, label)
+            pred = ctx.model(image)
+            loss = ctx.criterion(pred, label)
 
-            loss = loss.to(ctx.device)
+            loss.backward()
+            ctx.optimizer.step()
 
-            ctx.scaler.scale(loss).backward()
-            ctx.scaler.step(ctx.optimizer)
-            ctx.scaler.update()
-
-            ctx.optimizer.zero_grad(set_to_none=True)
-
+            trainLoss += loss.item()
+            trainCorrect += (pred.argmax(1) == label).sum().item()
+        
+        trainLoss = trainLoss / len(train_loader)
+        trainAcc = 100 * trainCorrect / len(train_loader.dataset)
 
         ctx.model.eval()
         with torch.no_grad():
@@ -111,41 +130,47 @@ def trainLoop(ctx: CNNContext,
                 X = X.to(ctx.device)
                 y = y.to(ctx.device)
 
-                with torch.autocast(device_type=ctx.device, dtype=torch.float16, enabled=ctx.amp):
-                    pred = ctx.model(X)
-                    loss = ctx.criterion(pred, y)
+                pred = ctx.model(X)
+                loss = ctx.criterion(pred, y)
 
-                runningLoss += float(loss.item())
+                runningLoss += loss.item()
                 correct += (pred.argmax(1) == y).sum().item()
             
             epoch_loss = runningLoss / len(val_loader)
             epoch_acc = 100 * correct / len(val_loader.dataset)
+        
+        ctx.scheduler.step()
 
         if epoch_loss < best_loss:
             best_loss = epoch_loss
-            torch.save(ctx.model.state_dict(), ctx.saveFile)
+            torch.save({
+                "model": ctx.model.state_dict(),
+                "optimizer": ctx.optimizer.state_dict(),
+                "scheduler": ctx.scheduler.state_dict(),
+                "bestLoss": best_loss,
+            }, ctx.saveFile)
         
-        sampleList.append(epoch_loss)
-        if sampleList.difference() < ctx.threshold:
-            counter += 1
-        
-        if ctx.patience < counter:
-            print("Stopping training prematurely due to validation convergence!")
-            break   # exit prematurely
-
+        print(f"Train Loss: {trainLoss}")
+        print(f"Train Accuracy: {trainAcc}")
         print(f"Validation Loss: {epoch_loss}")
         print(f"Validation Accuracy: {epoch_acc}\n")
+        print("---------------------------------------------")
 
 def testAccuracy(ctx: CNNContext, test_loader: DataLoader) -> float:
-    ctx.model.load_state_dict(torch.load(ctx.saveFile, weights_only=False, map_location=ctx.device))
+    checkpoint = torch.load(ctx.saveFile, map_location=ctx.device)
+    ctx.model.load_state_dict(checkpoint["model"])
+    ctx.optimizer.load_state_dict(checkpoint["optimizer"])
+    ctx.scheduler.load_state_dict(checkpoint["scheduler"])
+    best_loss = checkpoint["bestLoss"]
+    
 
     ctx.model.eval()
     with torch.no_grad():
         correct = 0
         for image, label in tqdm(test_loader, desc="Test progress", leave=False):
-            if ctx.gpu:
-                image = image.cuda()
-                label = label.cuda()
+            
+            image = image.to(ctx.device)
+            label = label.to(ctx.device)
             
             out = model(image)
             correct += (out.argmax(1) == label).sum().item()
@@ -156,95 +181,93 @@ def testAccuracy(ctx: CNNContext, test_loader: DataLoader) -> float:
 
 if __name__ == "__main__":
 
+    MAX_EPOCHS = 500
     BATCH_SIZE = 32
-    useAmp = False
+    saveFile = "model.pth"
+    doTrain = True
+    learningRate = 1e-4
+    resumeTraining = False
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-arch", desc="EmoNeXt Architecture")
-    parser.add_argument("-bs", desc="BatchSize for dataloaders")
-    parser.add_argument("-amp", desc="Enable amp")
+    parser.add_argument("-bs", help="BatchSize for dataloaders")
+    parser.add_argument("-e", "--epochs", help="Number of epochs to train for")
+    parser.add_argument("-of", "--out-file", help="Name of output file")
+    parser.add_argument("-lr", help="Name of output file")
+    parser.add_argument("-resume", help="Turn training off", action="store_true")
+    parser.add_argument("--no-train", help="Turn training off", action="store_true")
 
     args = parser.parse_args()
-    VersionToTrain = args.arch
+    print(args)
 
     if args.bs:
         BATCH_SIZE = int(args.bs)
 
-    if args.amp:
-        useAmp = True
+    if args.epochs:
+        MAX_EPOCHS = int(args.epochs)
     
+    if args.out_file:
+        saveFile = args.out_file
+    
+    if args.lr:
+        learningRate = float(args.lr)
+
+    if args.resume:
+        resumeTraining = True
+
+    if args.no_train:
+        doTrain = False
+
     # INSTANCES
-    trainSet = FERDataset(DATASETS_BASE, DataMode.train, transform)
-    evalSet = FERDataset(DATASETS_BASE, DataMode.eval, transform)
+    if doTrain:
+        trainSet = FERDataset(DATASETS_BASE, DataMode.train, train_transform)
+        evalSet = FERDataset(DATASETS_BASE, DataMode.eval, transform)
+    
     testSet = FERDataset(DATASETS_BASE, DataMode.test, transform)
 
-    trainLoader = DataLoader(trainSet, batch_size=BATCH_SIZE, shuffle=True)
-    evalLoader = DataLoader(evalSet, batch_size=BATCH_SIZE, shuffle=False)
+    if doTrain:
+        trainLoader = DataLoader(trainSet, batch_size=BATCH_SIZE, shuffle=True)
+        evalLoader = DataLoader(evalSet, batch_size=BATCH_SIZE, shuffle=False)
     testLoader = DataLoader(testSet, batch_size=BATCH_SIZE, shuffle=False)
 
     #model = Models.BuildGoogLeNet(numClasses=6)    ACCURACY: 80%
     #model = Models.EmoNeXt_Tiny()                  ACCURACY: 71%
+
+    #model = Models.MobileNetV2()                   ACCURACY: 66%
+    model = Models.ResNet50()                      #ACCURACY: 76%
+   
+    lossFn = nn.CrossEntropyLoss()
+    optimSGD = optim.SGD(model.parameters(), lr=learningRate, momentum=0.9, weight_decay=1e-6)
+    optimAdam = optim.Adam(model.parameters(), lr=learningRate, weight_decay=0.005)
+    optimAdamW = optim.AdamW(model.parameters(), lr=learningRate)
+
+    lrScheduler = optim.lr_scheduler.CosineAnnealingLR(optimAdam, MAX_EPOCHS)
     
-    Versions = {
-        "Tiny": [
-            [96, 192, 384, 768],
-            [3, 3, 9, 3]
-        ],
-        "Small": [
-            [96, 192, 384, 768],
-            [3, 3, 27, 3]
-        ],
-        "Base": [
-            [128, 256, 512, 1024],
-            [3, 3, 27, 3]
-        ],
-        "Large": [
-            [192, 384, 768, 1536],
-            [3, 3, 27, 3]
-        ],
-        "XLarge": [
-            [256, 512, 1024, 2048],
-            [3, 3, 27, 3]
-        ],
-    }
-
-    if not VersionToTrain in Versions.keys():
-        raise ValueError("Invalid input")
-
-    arch = Versions[VersionToTrain]
-
-    model = Models.EmoNeXt_Variable(channels=arch[0], blocks=arch[1])
-    loss_fn = nn.CrossEntropyLoss()
-    optim_SGD = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    optim_Adam = optim.Adam(model.parameters(), lr=0.001)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    scaler_Grad = torch.amp.GradScaler(device=device, enabled=useAmp)
 
     #LOGIC
     model.to(device)
 
     trainCtx: CNNContext = CNNContext(model=model,
-                                      criterion=loss_fn,
-                                      optimizer=optim_SGD,
-                                      scaler=scaler_Grad,
+                                      criterion=lossFn,
+                                      optimizer=optimAdam,
+                                      scheduler= lrScheduler,
                                       device=device,
-                                      amp=useAmp,
-                                      threshold=1,        # Unit: %
+                                      threshold=0.01,
                                       epochs=MAX_EPOCHS,
-                                      patience=10,
-                                      saveFile=f"./EmoNeXt_{VersionToTrain}_trained.pth"
+                                      patience=20,
+                                      saveFile=saveFile,
+                                      resume=resumeTraining
                                     )
     
     accuraciesOverTime: NumberedList = NumberedList(10)
 
-    start = time.time()
-    trainLoop(ctx=trainCtx, train_loader=trainLoader, val_loader=evalLoader, sampleList=accuraciesOverTime)
-    stop = time.time()
-    duration = (stop - start) / 60 # duration in Minutes
-    
+    if doTrain:
+        start = time.time()
+        trainLoop(ctx=trainCtx, train_loader=trainLoader, val_loader=evalLoader, sampleList=accuraciesOverTime)
+        stop = time.time()
+        duration = (stop - start) / 60 # duration in Minutes
+        print(f"Training took {duration:.2f} Minutes")
+        
     modelAccuracy = testAccuracy(ctx=trainCtx, test_loader=testLoader) 
-    
     print(f"Model Accuracy: {modelAccuracy:.3f}%")
-    print(f"Training took {duration:.2f} Minutes")

@@ -1,6 +1,5 @@
 \documentclass[10pt, letterpaper, twocolumn]{article}
 \usepackage[final]{cvpr}
-\usepackage{hyperref} % CHANGED: Added the hyperref package to satisfy the cvpr final mode requirements
 
 \input{preamble.tex}
 
@@ -16,11 +15,18 @@ Daniel Pfefferkorn\\
 
 \begin{document}
 \maketitle
+
+\input{sections/00-Abstract.tex}
+
 \input{sections/01-Introduction.tex}
 \input{sections/02-RelatedWork.tex}
 \input{sections/03-Methodology.tex}
 \input{sections/04-Experiments.tex}
 \input{sections/05-Conclusion.tex}
+
+\appendix
+
+\input{sections/06-Appendix.tex}
 
 {
     \small

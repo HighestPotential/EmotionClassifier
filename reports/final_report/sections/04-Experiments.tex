@@ -47,6 +47,10 @@ Overall, both attention variants performed similarly in the sense that they achi
 \subsubsection{CCT-7 (Compact Convolutional Transformer):} Even though the architecture was perfectly suited for small images, it simply possessed too few parameters to learn the complex features required for human emotion classification.
 \subsubsection{ConvNeXt V2 Atto:} Similar to CCT-7, the model lacked the parameter count necessary to build robust representations.
 
+\subsubsection{MobileNet V2}
+
+With $\approx 3.5$M parameters MobileNet V2 is one of the smallest Networks we implemented. Sadly the low parameter count and adaptation to images of size $64 \times 64$ were 
+incompatible with out goal of effective emotion recognition. The model only achieved an accuracy of $66 \%$ on the evaluation data and was hence discarded from future experiments.
 
 \subsubsection{Other ResNet implementations}
 

@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import cv2 as cv
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 class FindDuplicates:
 
@@ -64,9 +64,12 @@ class FindDuplicates:
         images = []
 
         for path in strBatch:
-            img = Image.open(path).convert("L")
-            img_arr = np.array(img).astype(np.uint8)
-            images.append(img_arr)
+            try:
+                img = Image.open(path).convert("L")
+                img_arr = np.array(img).astype(np.uint8)
+                images.append(img_arr)
+            except UnidentifiedImageError:
+                continue
         
         return images
     

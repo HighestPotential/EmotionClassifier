@@ -12,12 +12,12 @@ widely studied within the field of psychology.
 Facial emotion recognition (FER) refers to the ability to identify human emotions computationally based on images. Other types of emotion recognition tasks 
 approach the same problem by analyzing speech or writing to reconstruct a person's emotional state. As past research has shown, understanding human emotions 
 is no trivial task for an algorithm. The best results in the field of FER have been achieved using complex model architectures and significant amounts of training
-data. However, the results are quite promising. Recent publications have exceeded accuracies of 90\% [Citation] in their studies.
+data. However, the results are quite promising. Recent publications have exceeded accuracies of 90\% \cite{HSU2025112867} in their studies.
 
 \subsection{Why is FER important}
 
 Given that humans themselves are capable of emotion recognition, it may not be immediately clear why research in this field is so important. The answer
-to this question is that characterizing a person's feelings is a key part of many important sectors such as:
+to this question is that characterizing a person's feelings is a key part of many important sectors such as \cite{europa}:
 
 \begin{itemize}
     \item Healthcare
@@ -25,7 +25,7 @@ to this question is that characterizing a person's feelings is a key part of man
     \item Crime detection
     \item Advertising
 \end{itemize}
-[Citation]
+
 
 By automating the emotion recognition process needed in these areas, the risk of human error can be significantly reduced. Furthermore individuals 
 differ substantially in their ability to correctly classify sentiments. Implementing automated emotion recognition solutions therefore provides a
@@ -34,10 +34,6 @@ consistent baseline for real-world applications.
 \subsection{Our work}
 
 The goal of this project was to research and understand this technology, followed by the construction, training and evaluation of our own AI model
-specialized in assessing six basic human emotions: happiness, anger, sadness, fear, disgust and surprise. The research done prior to the practical implementation
-revealed that this was already a highly researched topic with promising results not limited to one architecture or family of architectures but 
-imporoved accuracies emerging from neural networks leveraging fundamentally different concepts. 
+specialized in assessing six basic human emotions: happiness, anger, sadness, fear, disgust and surprise. 
 
-To better  understand these methods and use them to achieve the best possible results we independently implemented several promising designs, slightly altering 
-the original parameters to compensate for the required $64 \times 64$ aspect ratio of the images. The groups final model was selected by evaluating the best performing
-models on a held out test set. 
+The following paper will illustrate the approaches we took to optimize our implementation for accuracy.
