@@ -2,24 +2,27 @@
 \label{sec:related}
 
 \subsection{Efficient Architectures and Low-Resolution Vision}
-The evolution of computer vision architectures has largely been driven by the quest for efficiency and scalability. Tan and Le introduced \textbf{EfficientNetV2} \cite{tan2021efficientnetv2smallermodelsfaster}, highlighting the importance of training speed and parameter efficiency through the use of Fused-MBConv layers. While highly effective on ImageNet, standard CNNs often struggle with information loss when applied to small inputs. Addressing this, Hassani et al. proposed \textbf{Compact Convolutional Transformers (CCT)} \cite{hassani2022escapingbigdataparadigm}, demonstrating that transformers can escape the ``big data paradigm'' by using convolutional tokenizers to handle small datasets effectively. Similarly, modern pure ConvNets like \textbf{ConvNeXt V2} \cite{woo2023convnextv2codesigningscaling} utilize fully convolutional masked autoencoders to improve representation learning. More recently, \textbf{Vision Mamba (Vim)} \cite{zhu2024visionmambaefficientvisual} challenged the transformer dominance by utilizing bidirectional State Space Models (SSMs) for linear complexity scaling, offering a computationally efficient alternative for visual representation. Our work evaluates these state-of-the-art architectures, adapting their downsampling strategies to the constraints of $64 \times 64$ facial expression recognition (FER).
+Modern computer vision architectures prioritize efficiency and scalability. 
+\textbf{EfficientNetV2} enhances training speed and parameter efficiency through Fused-MBConv layers \cite{tan2021efficientnetv2smallermodelsfaster}, while \textbf{Compact Convolutional Transformers (CCT)} utilize convolutional tokenizers to address information loss on small inputs \cite{hassani2022escapingbigdataparadigm}. 
+Similarly, \textbf{ConvNeXt V2} employs masked autoencoders \cite{woo2023convnextv2codesigningscaling}, and \textbf{Vision Mamba (Vim)} utilizes bidirectional State Space Models for linear complexity scaling \cite{zhu2024visionmambaefficientvisual}. 
+Our work evaluates these architectures, adapting their downsampling strategies for $64 \times 64$ facial expression recognition (FER).
 
 \subsection{Transfer Learning in Facial Analysis}
-Facial Expression Recognition benefits significantly from domain-specific pre-training on massive face recognition datasets to overcome data scarcity. Wang et al. \cite{wang2025qcsfeaturerefiningquadruplet} evaluated multiple model architectures and demonstrated the overarching efficacy of transfer learning for establishing robust feature extractors. Specifically, they illustrated that an InsightFace ResNet-50 (IR50) backbone, pre-trained on the MS-Celeb-1M dataset, effectively captures identity-invariant representations prior to processing fine-grained facial expressions. Inspired by this methodology, we adopted the pre-trained IR50 weights from their repository to initialize our network.
 
-\subsection{Lightweight Models and Transfer Learning Strategies for Efficient FER}
+FER benefits from domain-specific pre-training on massive datasets to overcome data scarcity. 
+Wang et al.\ \cite{wang2025qcsfeaturerefiningquadruplet} demonstrated that an InsightFace ResNet-50 (IR50) backbone, pre-trained on MS-Celeb-1M, captures identity-invariant representations effectively. 
+We adopted these pre-trained IR50 weights to initialize our network.
 
-Recent advances in facial expression recognition (FER) have largely been driven by increasingly deep and parameter-heavy convolutional neural networks. However, the CERN \cite{GERA20229} architecture challenges this trend by demonstrating that state-of-the-art (SOTA) performance can be achieved with only 1.45 million parameters. Despite its compact design, CERN outperformed several larger and more computationally demanding models across benchmark datasets. On in-the-wild datasets RAFDB and FerPlus CERN reports 87.09% and 88.17% accuracies.
+\subsection{Lightweight Models and Transfer Learning}
+Despite the trend of parameter-heavy CNNs, the \textbf{CERN} \cite{GERA20229} architecture achieves state-of-the-art performance with only 1.45 million parameters. 
+CERN outperformed larger models, reporting 87.09\% and 88.17\% accuracies on the in-the-wild RAFDB and FerPlus datasets respectively.
 
 
-\subsection{Optimization and Generalization Techniques}
-Training deep networks on heterogeneous, imbalanced datasets requires specialized optimization strategies to ensure convergence and generalization. 
-\begin{itemize}
-    \item \textbf{Warm-up and Learning Rate Schedules:} As demonstrated by Goyal et al. \cite{goyal2018accuratelargeminibatchsgd}, utilizing a learning rate warm-up period is critical for stabilizing training, particularly when using large minibatches. This technique prevents the model from diverging due to large gradient updates during the initial epochs when weights are random.
-    \item \textbf{Sharpness-Aware Minimization (SAM):} Standard optimizers like AdamW focus solely on minimizing the training loss value. Foret et al. introduced \textbf{SAM} \cite{foret2021sharpnessawareminimizationefficientlyimproving}, which simultaneously minimizes loss value and loss sharpness. By seeking parameters that lie in ``flat minima,'' SAM significantly improves generalization performance on out-of-distribution data, a crucial property for our multi-source dataset that includes both lab-controlled and in-the-wild images.
-\end{itemize}
+\subsection{Optimization and Generalization}
+Training on heterogeneous datasets requires specialized optimization. 
+A learning rate \textbf{warm-up} period stabilizes training with large minibatches by preventing divergence during initial epochs \cite{goyal2018accuratelargeminibatchsgd}. 
+Furthermore, \textbf{Sharpness-Aware Minimization (SAM)} \cite{foret2021sharpnessawareminimizationefficientlyimproving} minimizes loss value and sharpness simultaneously, improving generalization on out-of-distribution data.
 
-\subsection{Choosing a FACS-Aligned Benchmark Dataset for Robust Generalization Testing}
-
-CK+ is a well-established dataset focusing on prototypical and micro-expressions, with annotations grounded in the Facial Action Coding System (FACS) developed by Ekman and Friesen~\cite{Ekman1978FACS}. FACS defines facial movements in terms of Action Units (AUs), which correspond to specific underlying muscle activations. The selection of key facial landmarks and their configuration in CK+ follows the FACS framework~\cite{Lucey2010CK}, making it particularly suitable for evaluating models designed to capture fine-grained facial expression dynamics.
-
+\subsection{FACS-Aligned Benchmark Datasets}
+The \textbf{CK+} dataset provides prototypical expressions annotated via the Facial Action Coding System (FACS) \cite{Ekman1978FACS}, which defines facial movements using Action Units. 
+This FACS-aligned landmark configuration makes CK+ an optimal benchmark for evaluating fine-grained expression dynamics \cite{Lucey2010CK}.

@@ -19,7 +19,7 @@ As illustrated in the Figure \ref{fig:processed_images_distribution}, the aggreg
 
 For the final training phase, CK+ and KDEF \cite{kdef} were deliberately excluded from the training set in order to evaluate the generalization capability of the proposed model on unseen datasets. It is important to emphasize that both datasets are relatively balanced.
 
-KDEF contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions, including photos from multiple angles up to 90º. This increased variation in viewpoint makes it more challenging for our models to accurately predict the expressions, which explains their lower performance on KDEF. Although the images were resized to $64 \times 64$ pixels to meet the architectural requirements of this study, the dataset remains valuable for assessing cross-dataset robustness due to its standardized acquisition setup. 
+KDEF contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions, including photos from multiple angles up to 90º. This increased variation in viewpoint makes it more challenging for our models to accurately predict the expressions, which explains their lower performance on KDEF.
 
 By excluding CK+ and KDEF from training, these datasets served as independent test sets, enabling a more rigorous evaluation of cross-dataset generalization performance.
 
@@ -67,7 +67,7 @@ In Phase 2, we started with 310,215 images. After selective pre-processing, we r
     ymin=0,
     ymax=100000,
     ytick={0,20000,40000,60000,80000,100000},
-    scaled y ticks=false, % CHANGED: Disabled automatic scaling to show full integers from 0 to 100000.
+    scaled y ticks=false, 
     yticklabel style={/pgf/number format/fixed, /pgf/number format/1000 sep={}},
     nodes near coords,
     nodes near coords style={font=\tiny},
@@ -123,7 +123,7 @@ Our model is based on ResNet18 and is extended with a squeeze-and-excitation (SE
 
 The input to our network is a standardized RGB face image of size 64x64. Since this is much smaller than the standard ImageNet setting (224x224), we avoid the original ResNet stem (7x7 stride-2 convolution plus stride-2 max pooling), because it would reduce spatial resolution too early and remove fine facial details. Instead, we use a 3x3 convolution with stride 1 and omit early pooling to preserve spatial information \cite{cs231n2017}.
 
-After the stem, we follow the standard ResNet18 design with four residual stages and stage-wise downsampling. Skip connections stabilize optimization by learning residual refinements rather than fully rewriting features \cite{he2016resnet}. After the final stage, global average pooling and a dropout-regularized linear layer produce logits for the six emotion classes.
+After the stem, we follow the standard ResNet18 design with four residual stages and stage-wise downsampling.
 
 We augment the ResNet18 backbone with squeeze-and-excitation (SE) blocks, which perform lightweight channel-wise attention by learning per-channel scaling factors from globally pooled features, improving representational capacity with minimal overhead \cite{hu2018senet}. The motivation for using a lightweight attention mechanism is consistent with the goal of improving robustness without greatly increasing model size and is aligned with compact FER approaches such as CERN \cite{GERA20229}.
 \subsection{Class Imbalance and Advanced Loss Functions}
@@ -139,31 +139,6 @@ To address this imbalance without relying on a \texttt{WeightedRandomSampler}, w
 \begin{itemize}
     \item \textbf{Class-Balanced Focal Loss (CB-FL):} This loss was applied to \textbf{both the ResNet18+SE and EfficientNetV2-S models}. It assigns larger weights to underrepresented classes using the effective number of samples \cite{cui2019classbalancedlossbasedeffective}, while the focal component reduces the contribution of well-classified (easy) samples so that the model continues learning from harder examples \cite{lin2018focallossdenseobject}.
     \item \textbf{Label-Distribution-Aware Margin Loss (LDAM) with Deferred Re-Weighting (DRW):} This loss was evaluated \textbf{exclusively on the EfficientNetV2-S model}. LDAM modifies the logit outputs by assigning a significantly larger mathematical margin to minority classes \cite{cao2019learning}. This strictly penalizes the model unless it maintains extreme confidence when predicting rare classes, thereby enforcing wider decision boundaries around them. The DRW strategy schedules the training such that the model trains without artificial weights for the initial epochs to learn robust feature representations. In the final epochs, strict class frequency weights are applied to fine-tune the decision boundaries for the minority classes without corrupting the initial feature learning phase.
-\end{itemize}
-
-\subsubsection{Transfer Learning (IR50)}
-We wanted to try bigger models for our project. However, we did not have enough data to train a large model from zero. Transfer learning allowed us to test how this method works in our specific case and opened the possibility to use a larger architecture. A positive side effect was that the pre-trained model (InsightFace ResNet-50) had already learned facial features from a massive dataset of one million images (Ms-Celeb-1M) \cite{wang2025qcsfeaturerefiningquadruplet}.
-
-The adaptation occurred in three steps:
-
-\textbf{Version 1: Original Full Fine-Tuning}
-The first test used the entire IR50 architecture, including the original classification head.
-\begin{itemize}
-    \item \textbf{The Problem:} The original head flattened the spatial grid into a 25,088-dimensional vector and sent it into a massive linear layer. This single layer had 12.8 million random parameters, accounting for almost half of the whole model.
-    \item \textbf{Result:} Training all 27 million parameters on small datasets caused rapid overfitting. The massive linear layer memorized exact spatial positions, and the high learning rate ruined the pre-trained weights.
-\end{itemize}
-
-\textbf{Version 2: Layer Freezing and the Memorization Problem}
-To protect the pre-trained feature extractors, we froze the early layers (\texttt{input\_layer}, \texttt{body1}, \texttt{body2}, and \texttt{body3}), which contain about 9 million parameters.
-\begin{itemize}
-    \item \textbf{Methodology:} We could not freeze the entire backbone because emotion classification requires the network to identify specific facial features that a face recognition model might ignore. Therefore, we kept the final convolutional block (\texttt{body4}) trainable.
-\end{itemize}
-
-\textbf{Version 3: The Light Head Architecture}
-To stop the memorization while keeping \texttt{body4} trainable, we built a new head for the model.
-\begin{itemize}
-    \item \textbf{Methodology:} We removed the 12.8-million-parameter head and replaced it with a ``Light Head'' containing only 795,000 parameters.
-    \item \textbf{Spatial Attention Integration:} Using a standard Global Average Pooling (GAP) layer fixes the parameter problem but destroys spatial information. Human emotions are local, making spatial context critical. We added a Spatial Attention module (Conv1x1 followed by a Sigmoid activation) before the GAP layer. This module learns to give weights to important spatial areas before the GAP layer reduces the dimensions.
 \end{itemize}
 
 \subsubsection{Alternative Architectures}
@@ -196,22 +171,27 @@ decision of the model. For out task we experimented with two different methods:
 The grad-cam method is widely used to explain computer vision models. The algorithm works by analyzing the gradients used by the last convolutional layer and assigning a level of 
 importance for each neuron's output for the final classification of the image \cite{DBLP:journals/corr/SelvarajuDVCPB16}. However this approach did not seem to work as well as we hoped 
 for our model. Applying grad-cam to our model's last convolutional layer resulted in a coarse and inaccurate heatmap. To combat this problem we experimented with using the previous 
-convolutional layers as the base layer for grad-cam which yielded strongly improved results as in Figure \ref{fig:gradcam}.
+convolutional layers as the base layer for grad-cam which yielded strongly improved results as in Figure \ref{fig:XAI}.
 
 The poor performance of the grad-cam method is a result of the heavy downsampling during our model's forward pass. The resolution ($8 \times 8$) of the final feature maps lacks sufficient 
 spacial information to effectively reconstruct the importance of the low resolution input. This also explains why we achieved better results on a layer using higher resolution feature maps.
 
 \begin{figure}
     \centering
-    \begin{subfigure}{0.4\columnwidth}
+    \begin{subfigure}{0.3\columnwidth}
         \includegraphics[scale=0.3]{figures/Layer_4_GradCAM.png}
     \end{subfigure}
     \hfill
-    \begin{subfigure}{0.4\columnwidth}
+    \begin{subfigure}{0.3\columnwidth}
         \includegraphics[scale=0.3]{figures/Layer_3_GradCAM.png}
     \end{subfigure}
-    \caption{Grad-CAM result of the fourth convolutional layer (left) and the third convolutional layer (right)}
-    \label{fig:gradcam}
+    \hfill
+    \begin{subfigure}{0.3\columnwidth}
+        \includegraphics[scale=0.3]{figures/IntegratedGradients.png}
+    \end{subfigure}
+    \caption{Grad-CAM result of the fourth convolutional layer (left), the third convolutional layer (middle), and Integrated Gradients (right)}
+    \label{fig:XAI}
+
 \end{figure}
 
 \subsubsection{Integrated gradients}
@@ -219,13 +199,6 @@ spacial information to effectively reconstruct the importance of the low resolut
 Integrated gradients is a different algorithm to assess the importance of different image regions for the model's decision. This method works by attributing importance values 
 to the pixels of a baseline image. This image is slowly transformed into the original input image and in each transformation step the gradients of each pixel are calculated. The 
 Importance of each pixel is then set as the average gradient of each pixel, which represents how much the model's output changes based on that piece of information \cite{DBLP:journals/corr/SundararajanTY17}.
-The result is a fine grained attention map which highlights the most important parts of the image as seen in Figure \ref{fig:ig}.
+The result is a fine grained attention map which highlights the most important parts of the image as seen in Figure \ref{fig:XAI}.
 
 This approach seemed interesting to us as the quality of the output did not rely on the architectural details of our model.
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[scale=0.3]{figures/IntegratedGradients.png}
-    \caption{Heatmap resulting from the integrated gradients method}
-    \label{fig:ig}
-\end{figure}

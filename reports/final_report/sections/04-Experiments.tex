@@ -15,26 +15,9 @@ To measure the effect of optimizer choice and loss function while keeping the ar
     \label{fig:optimizer_loss_comparison}
 \end{figure}
 
-Across the four settings, SGD with class-balanced focal loss achieved the strongest validation performance. One likely reason is that AdamW can converge quickly early on, but with noisy and heterogeneous FER data it can also lead to solutions that generalize less well. In addition, class-balanced focal loss tends to be more robust for strong imbalance than weighted cross-entropy because it continues to emphasize hard and minority-class examples later in training \cite{lin2017focal,cui2019classbalanced}. In the final pipeline, imbalance is therefore handled mainly through the loss formulation rather than through sampling-based balancing.
-
-\subsection{Transfer Learning (IR50)}
-
-\textbf{Version 1: Original Full Fine-Tuning}
-The first test used the entire IR50 architecture, including the original classification head.
-\begin{itemize}
-    \item \textbf{The Problem:} The original head flattened the spatial grid into a 25,088-dimensional vector and sent it into a massive linear layer. This single layer had 12.8 million random parameters, accounting for almost half of the whole model.
-    \item \textbf{Result:} Training all 27 million parameters on small datasets caused rapid overfitting. The massive linear layer memorized exact spatial positions, and the high learning rate ruined the pre-trained weights.
-\end{itemize}
-
-\textbf{Version 2: Layer Freezing and the Memorization Problem}
-\begin{itemize}
-    \item \textbf{Result:} We applied different learning rates, but the network still possessed the oversized 12.8-million-parameter head. This setup led to severe overfitting, shown by a performance gap of over 10 percent between training and validation metrics. The massive parameter count allowed the model to memorize the training data.
-\end{itemize}
-
-\textbf{Version 3: The Light Head Architecture}
-\begin{itemize}
-    \item \textbf{Result:} With only 5.8 million trainable parameters, a reduced MixUp probability, and an Exponential Moving Average (EMA) decay, this setup successfully stopped the overfitting gap and achieved a peak validation accuracy of 81.38 percent.
-\end{itemize}
+Across the four settings, SGD with class-balanced focal loss achieved the strongest validation performance. One likely reason is that AdamW can converge quickly early on, but with noisy and heterogeneous FER data it can also lead to solutions that generalize less well. In addition, class-balanced focal loss tends to be more robust for strong imbalance than weighted cross-entropy because it continues to emphasize hard and minority-class examples later in training. In the final pipeline, imbalance is therefore handled mainly through the loss formulation rather than through sampling-based balancing.
+\subsection{Transfer Learning Evolution (IR50)}
+To address dataset size limitations, we utilized an InsightFace ResNet-50 (IR50) model, pre-trained on the Ms-Celeb-1M dataset \cite{wang2025qcsfeaturerefiningquadruplet}. The adaptation proceeded in three phases. In Version 1, full fine-tuning of the entire architecture led to severe overfitting due to a massive 12.8-million-parameter linear classification head memorizing spatial positions. In Version 2, we froze the initial backbone layers (\texttt{input\_layer} through \texttt{body3}) to preserve pre-trained feature extractors while keeping \texttt{body4} trainable. However, the oversized head still caused a training-validation accuracy gap exceeding 10 percent. Ultimately, Version 3 replaced the massive head with a 795,000-parameter ``Light Head'' and incorporated a Spatial Attention module (Conv1x1 with Sigmoid activation) before Global Average Pooling to retain local facial features. With reduced trainable parameters (5.8 million), modified MixUp, and Exponential Moving Average (EMA) decay, this final architecture prevented overfitting and achieved a validation accuracy of 81.38 percent.
 
 \subsection{Alternative Architectures Evaluation}
 

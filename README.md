@@ -52,7 +52,6 @@ Here is an overview of the main directories in this repository:
 The demo demonstrates real-time emotion classification on video files or GIFs. It detects faces, classifies their prevailing emotion, and optionally overlays visual explanations (heatmaps) to show which parts of the face contributed most to the decision.
 
 
-
 ### How to Run
 
 To run the demo, use the `process_video.py` script located in the `demo` directory.
