@@ -36,7 +36,7 @@ Here is an overview of the main directories in this repository:
 | :--- | :--- | :--- |
 | **ResNet18+SE** | 12.0 | 68.60% |
 | **EfficientNet V2-S** | 21.5 | 67.20% |
-| **IR50 (ArcFace)** | 43.6 | 64.67% |
+| **Custom IR50 (ArcFace)** | 31.7 | 64.67% |
 | **ResNet18** | 11.7 | 55.70% |
 | **ResNet34** | 21.8 | 51.30% |
 | **CCT-7** | 3.7 | 49.40% |
