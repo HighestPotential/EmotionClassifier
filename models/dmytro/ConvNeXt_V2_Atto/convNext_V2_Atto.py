@@ -20,11 +20,11 @@ except ImportError:
 
 # Constants
 BATCH_SIZE = 16
-ACCUM_STEPS = 4 # Aggregate gradients over 16 steps (Virtual Batch Size = 4 * 16 = 64)
+ACCUM_STEPS = 4 
 EPOCHS = 300
 LR = 0.0005
 WEIGHT_DECAY = 0.05
-MOMENTUM = 0.9 # Not used for AdamW but kept for reference if needed
+MOMENTUM = 0.9 
 IMG_SIZE = 64
 NUM_WORKERS = 8
 DATASET_ROOT = '/home/d/dumanskyy/work/EmotionClassifier/latest_1_0_ready_to_use_datasets'
@@ -121,15 +121,6 @@ val_loader = torch.utils.data.DataLoader(full_val_dataset, batch_size=BATCH_SIZE
 print(f"Total Training Samples: {len(full_train_dataset)}")
 print(f"Total Validation Samples: {len(full_val_dataset)}")
 
-# --- Visualization ---
-# plt.figure(figsize=(10, 6))
-# plt.bar(emotion_counts_train.keys(), emotion_counts_train.values(), color='skyblue')
-# plt.xlabel('Emotion')
-# plt.ylabel('Number of Samples')
-# plt.title('Distribution of Emotions in Training Set')
-# plt.show()
-
-# Prepare samples_per_class list for Balanced Loss
 samples_per_class = [emotion_counts_train[c] for c in CLASSES]
 print("Samples per class:", samples_per_class)
 
@@ -143,10 +134,6 @@ print(f"Using device: {device}")
 print("Initializing ConvNeXt V2 Atto...")
 model = create_model('convnextv2_atto', pretrained=False, num_classes=len(CLASSES))
 
-# OVERWRITE THE STEM (First Layer) for 64x64 input
-# Original Stem: Conv2d(3, 40, kernel_size=4, stride=4) -> reduces 64x64 to 16x16 immediately
-# New Stem: Kernel=3, Stride=1, Padding=1 -> preserves 64x64 spatial dim (or close to it)
-# Note: ConvNeXt V2 Atto stem output channels is 40.
 model.stem = nn.Conv2d(3, 40, kernel_size=3, stride=1, padding=1)
 
 print("Model Stem modified for small image size.")
@@ -155,13 +142,10 @@ model = model.to(device)
 # Loss Function
 # Calculate Class Weights
 total_samples = sum(samples_per_class)
-# Formula: Total / (Num_Classes * Frequency)
 class_weights = [total_samples / (len(CLASSES) * x) if x > 0 else 1.0 for x in samples_per_class]
 print(f"Class Weights: {class_weights}")
 class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(device)
 
-# With Mixup/CutMix, labels are probabilities (soft targets).
-# PyTorch's CrossEntropyLoss supports 'weight' argument even when targets are probabilities.
 criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
 
 # Optimizer
@@ -288,7 +272,6 @@ for epoch in range(EPOCHS):
     avg_vloss = validate(epoch)
     
     # Checkpoint
-    # Ensure directory exists
     model_dir = '/home/d/dumanskyy/work/EmotionClassifier/models/dmytro/ConvNeXt_V2_Atto'
     os.makedirs(model_dir, exist_ok=True)
     model_path = os.path.join(model_dir, f'model_checkpoint_epoch_{epoch+1}.pth')

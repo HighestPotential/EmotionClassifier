@@ -26,7 +26,6 @@ else:
     if compact_transformers_path not in sys.path:
         sys.path.append(compact_transformers_path)
 
-# --- Configuration ---
 BATCH_SIZE = 128     
 ACCUM_STEPS = 1          
 EPOCHS = 400
@@ -39,19 +38,16 @@ DATASET_ROOT = '/home/d/dumanskyy/work/EmotionClassifier/latest_3_0_ready_to_use
 DATASETS = ['AffectNet', 'CKplusIm', 'FERPlus', 'RAF-DB', 'KDEFFormated',\
      'jaffeFormated', 'MMAFEDB', 'ExpWFormated', 'EmoSet-118k', 'NHFI']
 
-# --- Overfitting Fix Hyperparameters ---
 DROP_PATH_RATE = 0.3
 MIXUP_ALPHA = 0.2
 CUTMIX_ALPHA = 0.2
 LABEL_SMOOTHING = 0.1
 WARMUP_EPOCHS = 5
 
-# --- LDAM+DRW Specific: Mixup probability reduced (Option C) ---
-MIXUP_PROB = 0.3  # Only 30% of batches get Mixup; 70% use LDAM with hard targets
+MIXUP_PROB = 0.3
 
-# --- LDAM Hyperparameters ---
-LDAM_MAX_MARGIN = 0.5   # Maximum margin for rarest class
-LDAM_SCALE = 30.0       # Logit scaling factor
+LDAM_MAX_MARGIN = 0.5
+LDAM_SCALE = 30.0
 
 # --- DRW (Deferred Re-Weighting) ---
 # Phase 1: train without re-weighting (learn representations)
@@ -69,10 +65,6 @@ GRAYSCALE_PROB = 0.3
 MEAN = [0.4681, 0.4447, 0.4560]
 STD = [0.2327, 0.2227, 0.2224]
 
-# =====================================================================
-# LDAM LOSS (Cao et al., NeurIPS 2019)
-# Label-Distribution-Aware Margin Loss
-# =====================================================================
 class LDAMLoss(nn.Module):
     """
     Adds class-dependent margins to logits before computing cross-entropy.
@@ -175,7 +167,6 @@ if not train_datasets:
 full_train_dataset = torch.utils.data.ConcatDataset(train_datasets)
 full_val_dataset = torch.utils.data.ConcatDataset(val_datasets)
 
-# --- Dynamic Mean/Std Calculation ---
 print("Calculating mean and std of the training dataset...")
 loader = torch.utils.data.DataLoader(full_train_dataset, batch_size=256, shuffle=False, num_workers=NUM_WORKERS)
 
@@ -264,11 +255,10 @@ for name, ds in val_datasets_map.items():
 print(f"Total Training Samples: {len(full_train_dataset)}")
 print(f"Total Validation Samples: {len(full_val_dataset)}")
 
-# --- Mixup Fn (Reduced probability for Option C) ---
 mixup_fn = Mixup(
     mixup_alpha=MIXUP_ALPHA, 
     cutmix_alpha=CUTMIX_ALPHA,
-    prob=MIXUP_PROB,            # Only 30% of batches get Mixup/CutMix
+    prob=MIXUP_PROB,            
     switch_prob=0.3,
     mode='batch',
     label_smoothing=LABEL_SMOOTHING, 
@@ -317,8 +307,7 @@ scheduler = CosineLRScheduler(
     warmup_prefix=True
 )
 
-# --- Loss Functions ---
-soft_criterion = SoftTargetCrossEntropy()  # For Mixup batches (30%)
+soft_criterion = SoftTargetCrossEntropy()
 
 # LDAM Loss (no DRW weights initially — Phase 1)
 samples_per_cls = [int(class_sample_counts[i]) for i in range(len(CLASSES))]
@@ -328,7 +317,7 @@ ldam_criterion = LDAMLoss(
     cls_num_list=samples_per_cls,
     max_m=LDAM_MAX_MARGIN,
     s=LDAM_SCALE,
-    weight=None  # Phase 1: no re-weighting
+    weight=None
 ).to(device)
 
 # DRW weights (to be applied in Phase 2)

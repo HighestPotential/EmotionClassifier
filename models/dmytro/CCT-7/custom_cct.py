@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.ops import StochasticDepth
 
-# --- Technique A: Sequence Pooling ---
+
 class SequencePooling(nn.Module):
     def __init__(self, d_model):
         super().__init__()
@@ -16,8 +16,7 @@ class SequencePooling(nn.Module):
         # Weighted average -> (B, Dim)
         x = (x * w).sum(dim=1)
         return x
-
-# --- Components for CCT ---
+        return x
 
 class Tokenizer(nn.Module):
     def __init__(self,
@@ -104,8 +103,6 @@ class TransformerEncoderLayer(nn.Module):
         self.linear2 = nn.Linear(dim_feedforward, d_model)
         self.dropout2 = nn.Dropout(dropout)
 
-        # --- Technique B: Stochastic Depth ---
-        # Using torchvision.ops.StochasticDepth
         self.drop_path = StochasticDepth(p=drop_path_rate, mode="batch") if drop_path_rate > 0 else nn.Identity()
 
         self.activation = F.gelu
@@ -157,7 +154,6 @@ class TransformerClassifier(nn.Module):
             for i in range(num_layers)])
         self.norm = nn.LayerNorm(embedding_dim)
 
-        # --- Technique A: Sequence Pooling ---
         self.pool = SequencePooling(embedding_dim)
         
         self.fc = nn.Linear(embedding_dim, num_classes)
@@ -198,7 +194,7 @@ class CCT(nn.Module):
                  n_input_channels=3,
                  n_conv_layers=1,
                  kernel_size=3,
-                 stride=1, # --- Technique C: Stride 1 ---
+                 stride=1,
                  padding=1,
                  pooling_kernel_size=3,
                  pooling_stride=2,

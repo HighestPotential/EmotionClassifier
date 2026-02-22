@@ -137,15 +137,13 @@ def safe_load_weights(model, path, device):
         else:
             new_state_dict[k] = v
             
-    # Resize positional embeddings if needed (common for Vim/ViT)
+    # Resize positional embeddings if needed
     if 'pos_embed' in new_state_dict and model.pos_embed.shape != new_state_dict['pos_embed'].shape:
         print(f"Resizing pos_embed: {new_state_dict['pos_embed'].shape} -> {model.pos_embed.shape}")
-        # Simplistic resize - usually requires interpolation
-        # For now, just warn and strict=False
         pass
 
     try:
-        model.load_state_dict(new_state_dict, strict=False) # strict=False to handle potential minor mismatches
+        model.load_state_dict(new_state_dict, strict=False) 
         print("Weights loaded successfully.")
         return True
     except Exception as e:
@@ -156,8 +154,7 @@ def main():
     device = get_device()
     print(f"Using device: {device}")
 
-    # Datasets
-    target_datasets = ["CKplusIm", "KDEFFormatedCroppedTest2"] # Add others if needed
+    target_datasets = ["CKplusIm", "KDEFFormatedCroppedTest2"]
     root_dirs = []
     
     for name in target_datasets:

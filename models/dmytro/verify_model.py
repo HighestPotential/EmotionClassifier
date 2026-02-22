@@ -5,7 +5,6 @@ import timm
 import os
 from PIL import Image
 
-# Config
 CLASSES = ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise']
 IMG_SIZE = 64
 MEAN = [0.4681, 0.4447, 0.4560]
@@ -73,7 +72,6 @@ def main():
     print(f"Stem Weight Mean: {model.conv_stem.weight.mean().item()}")
     
     # 3. Find an Image
-    # We will search for ANY image in the anger folder to be sure
     anger_dir = '/home/d/dumanskyy/work/EmotionClassifier/latest_3_0_ready_to_use_datasets/AffectNet/test/anger'
     if not os.path.exists(anger_dir):
         print(f"Path not found: {anger_dir}")

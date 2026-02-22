@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import sys
 import os
 import torch
@@ -197,26 +191,21 @@ def train_one_epoch(epoch_index):
             optimizer.zero_grad()
         
         # --- AMP: Automatic Mixed Precision Context ---
-        # "autocast" automatically casts operations to float16 where safe (like matrix muls)
-        # and keeps others in float32 (like softmax/loss) for stability.
+        # "autocast" automatically casts operations to float16 where safe
         with torch.amp.autocast('cuda'):
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             
-        # --- AMP: Scaled Backward Pass ---
-        # 1. Scale the loss: Multiplies loss by a large factor to keep gradients in representable range of float16.
-        #    Gradient Accumulation: We must scale the loss by 1/ACCUM_STEPS so the sum of gradients is average.
         scaler.scale(loss / ACCUM_STEPS).backward()
         
-        # 3. Step: Only update weights after ACCUM_STEPS
+        # Step: Only update weights after ACCUM_STEPS
         if (i + 1) % ACCUM_STEPS == 0:
             scaler.step(optimizer)
             scaler.update()
-            optimizer.zero_grad() # Optional: zero here or at start (safer at start usually, but here is standard)
+            optimizer.zero_grad() 
 
         # Accumulate Loss and Accuracy 
-        # IMPORTANT: Explicitly cast to python float() to detach from the computational graph.
-        # If we just do `loss.item()`, sometimes PyTorch might hold onto the graph history, causing VRAM leaks.
+       
         loss_val = float(loss.item())
         
         # Epoch aggregates (weight by batch_size)
