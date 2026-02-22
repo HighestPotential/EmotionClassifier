@@ -49,37 +49,47 @@ Here is an overview of the main directories in this repository:
 
 ## Demo
 
-The demo demonstrates real-time emotion classification on video files or GIFs. It detects faces, classifies their prevailing emotion, and optionally overlays visual explanations (heatmaps) to show which parts of the face contributed most to the decision.
+The video demo demonstrates real-time emotion classification on video files or GIFs. It detects faces, classifies their prevailing emotion, and optionally overlays visual explanations (heatmaps) to show which parts of the face contributed most to the decision.
 
+The image demo expects the path to a folder containing images as an input. It loads all images in the given directory (and all subdirectories), feeds them through the model in batches and converts the resulting logits to probabilities using the Softmax function. These probabilites are then saved to a csv file together with the corresponding filepath.
 
-### How to Run
+### Seting up the virtual environment
 
-To run the demo, use the `process_video.py` script located in the `demo` directory.
+Install the provided conda environment using
 
 ```bash
-python demo/process_video.py <input_video_path> [options]
+cd environments
+conda env create -f demo_env.yml
+```
+
+### Running the video script
+
+To run the demo, use the `process_video.py` script located in the `demo/Video` directory:
+
+```bash
+python demo/Video/process_video.py <input_video_path> [options]
 ```
 
 **Examples:**
 
 ```bash
 # Basic usage
-python demo/process_video.py inputs/my_video.mp4
+python demo/Video/process_video.py inputs/my_video.mp4
 
 # Initial run with GradCAM XAI (default)
-python demo/process_video.py inputs/my_video.mp4 --xai gradcam
+python demo/Video/process_video.py inputs/my_video.mp4 --xai gradcam
 
 # Use Integrated Gradients for XAI
-python demo/process_video.py inputs/my_video.mp4 --xai ig
+python demo/Video/process_video.py inputs/my_video.mp4 --xai ig
 
 # Use Haar Cascade/RetinaFace detector
-python demo/process_video.py inputs/my_video.mp4 --face-detector haarcascade
+python demo/Video/process_video.py inputs/my_video.mp4 --face-detector haarcascade
 
 # Save to specific output
-python demo/process_video.py inputs/my_video.mp4 --output results/output.mp4
+python demo/Video/process_video.py inputs/my_video.mp4 --output results/output.mp4
 ```
 
-### Process Video Script (`demo/process_video.py`)
+### Process Video Script (`demo/Video/process_video.py`)
 
 The `process_video.py` script handles the entire inference pipeline:
 1.  **Input Reading**: Supports both standard video formats (`.mp4`, `.avi`, etc.) and `.gif` files via a custom `GifReader`.
@@ -88,6 +98,22 @@ The `process_video.py` script handles the entire inference pipeline:
 4.  **Inference**: Runs the loaded model (e.g., ResNet18SE) to predict one of 6 emotions: anger, disgust, fear, happiness, sadness, surprise.
 5.  **XAI Overlay**: Generates heatmaps using **GradCAM** or **Integrated Gradients** to visualize model focus.
 6.  **Output**: Annotates the video with bounding boxes, emotion labels, confidence scores, and emojis. Saves as video or GIF depending on the output extension.
+
+
+### Running the image script
+
+To run the demo, use the `process_images.py` script located in the `demo/Image` directory:
+
+```bash
+python demo/Image/process_images.py <input directory> [options]
+```
+
+**Examples:**
+
+```bash
+python demo/Image/process_images.py ./inputs/images
+python demo/Image/process_images.py ./inputs/images -of ./image_results.csv
+```
 
 
 ## Preprocessing
