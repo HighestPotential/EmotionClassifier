@@ -26,7 +26,7 @@ Here is an overview of the main directories in this repository:
     *   **`WebcamDemo`**: Real-time emotion classification on a live webcam feed, with optional live XAI headmaps.
 *   **`models`**: Contains contributor-specific experiments and distinct architectures (Aleks, Dmytro, Daniel, Tiago). The specific architectures tested include:
     *   **ResNet18** (Including SE, CBAM, and LReLU variants)
-    *   **EfficientNet** (V1 and V2 variations)
+    *   **EfficientNetV2-S** 
     *   **Vision Mamba (Vim)**
     *   **Compact Convolutional Transformer (CCT)**
     *   **ConvNeXt** (V2 Atto, Custom EmoNeXt)
@@ -40,9 +40,12 @@ Here is an overview of the main directories in this repository:
 
 ## Model Performance and Efficiency
 
-- **EfficientNetV2**: 88.1% accuracy on CK+
+- **EfficientNetV2-S**: 88.1% accuracy on CK+
 
 ![Model Accuracy vs. Parameter Count](resources/accuracy_vs_params.png)
+
+**Pre-Trained Weights:** You can find and download the pre-trained weights for the models and their variations here:
+**[Google Drive Link](https://drive.google.com/drive/folders/1mWiACcKtItb3BU19DYtzwgzEocINLkJZ?usp=sharing)**
 
 ## Demo
 
