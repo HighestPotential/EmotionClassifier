@@ -1,12 +1,18 @@
 # EmotionClassifier
 
 A comprehensive repository for emotion classification using various deep learning architectures, including EfficientNetV2, Vision Mamba (Vim), ResNet18-SE, and IR50. This project includes a complete pipeline from preprocessing and training to a functional video processing demo with Explainable AI (XAI) capabilities.
-
 *Note: The demo outputs below were generated using the **ResNet18-SE** architecture.*
 
 | GradCAM | Integrated Gradients |
 |---------|---------------------|
 | ![GradCAM Output (Layer 3)](resources/XAI_reactions.gif) | ![Integrated Gradients Output](resources/XAI_IG_reactions.gif) |
+
+## Project Goal
+
+The primary goal of this project was to research and evaluate various methodologies, research papers, and deep learning models to improve the accuracy of emotion prediction. Starting from scratch with almost no prior knowledge of Python and no knowledge of PyTorch, our group of four built this project from the ground up. Key objectives included:
+- Training at least one model entirely from scratch.
+- Experimenting with a wide range of different architectures and approaches.
+- Empirically validating the effectiveness of these methods based on initial motivations and hypotheses.
 
 ## Project Structure
 
