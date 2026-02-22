@@ -27,6 +27,7 @@ from aleks_resnet18_se import ResNet18SE
 class EvalDataset(Dataset):
     def __init__(self, root: str, transform = None):
         self.images = []
+        self.allowed_formats = ["png", "jpg", "jpeg", "bmp"]
         self.transform = transform
 
         self._getDir(root) 
@@ -34,8 +35,11 @@ class EvalDataset(Dataset):
     def _getDir(self, root):
        for file in os.listdir(root):
             filePath = os.path.join(root, file)
+            ending = filePath.split(".")[-1]
             if os.path.isdir(filePath):
                 self._getDir(filePath)
+            elif ending not in self.allowed_formats:
+                continue
             else:
                 self.images.append(filePath) 
 

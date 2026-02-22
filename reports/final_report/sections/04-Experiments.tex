@@ -106,9 +106,6 @@ Inspired by the paper about CERN \cite{GERA20229} the dual-input strategy was im
 
 \subsection{CERN-Based Architecture}
 
-The CERN architecture is derived from a LightCNN backbone with depths ranging from 9 to 29 layers in its full configuration. It employs Max-Feature-Map (MFM) activations for competitive feature selection and integrates Efficient Channel Attention (ECA) to perform lightweight channel-wise recalibration. A central component of the framework is its dual-input training strategy, where the network processes both an original image and its augmented counterpart simultaneously. Correct prediction requires label consistency across both inputs, promoting robustness and invariance to perturbations.
-
-Due to GPU memory constraints, it was not feasible to replicate the complete architecture with combined local and global attention mechanisms. Therefore, a reduced variant consisting of seven convolutional layers and a batch size of 16 was implemented to fit within the available computational resources. Even under this simplified configuration, training remained computationally intensive: 10 epochs required more than 24 hours, and long runs were occasionally interrupted, necessitating continuation from saved checkpoints.
-
+The implemented CERN architecture is a computationally reduced LightCNN-based model incorporating MFM activations, Efficient Channel Attention, and a dual-input consistency training strategy adapted to hardware constraints.
 At epoch 47, the model achieved 66.70\% evaluation accuracy and 67.51\% training accuracy. The learning dynamics showed extended plateaus followed by sudden improvements, suggesting that additional training time could potentially yield further performance gains. However, limited computational capacity—including the use of an NVIDIA RTX 2060 GPU—prevented full exploration of longer training schedules or the use of pretrained weights from the original seven-class model.
 
