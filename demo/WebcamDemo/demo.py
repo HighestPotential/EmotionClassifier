@@ -122,9 +122,10 @@ def overlay_heatmap(frame, cam, x1, y1, x2, y2, alpha=0.5):
 # ---------------------------------------------------------------------------
 
 class EmotionDemo:
-    def __init__(self, checkpoint_path=None, xai_method="none"):
+    def __init__(self, camera: int, checkpoint_path: str, xai_method="none"):
         self.device = DEVICE
         self.checkpoint_path = checkpoint_path
+        self.camera = camera
         self.xai_method = xai_method
         print(f"Running on device: {self.device}")
         print(f"XAI method: {self.xai_method}")
@@ -258,7 +259,7 @@ class EmotionDemo:
         return self.xai(input_tensor)
 
     def run(self):
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(self.camera)
         if not cap.isOpened():
             print("Error: Webcam not found.")
             return
@@ -426,17 +427,13 @@ class EmotionDemo:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Emotion Classification Demo")
-    parser.add_argument("--checkpoint", type=str, default=MODEL_CHECKPOINT_PATH_RESNET18, help="Path to the model checkpoint file. Defaults to bundled ResNet18 checkpoint.")
     parser.add_argument("--xai", type=str, choices=["gradcam", "ig", "none"], default="ig",
                         help="XAI overlay method: gradcam, ig (integrated gradients) [default], or none.")
     
     args = parser.parse_args()
     
     # Simple instantiation without model_type
-    if args.checkpoint:
-        demo = EmotionDemo(checkpoint_path=args.checkpoint, xai_method=args.xai)
-    else:
-        # Fallback to default path constant
-        demo = EmotionDemo(checkpoint_path=MODEL_CHECKPOINT_PATH_RESNET18, xai_method=args.xai)
-
+    system = platform.system()
+    camera = 1 if system == "Darwin" else 0
+    demo = EmotionDemo(camera = camera, checkpoint_path=MODEL_CHECKPOINT_PATH_RESNET18, xai_method=args.xai)
     demo.run()

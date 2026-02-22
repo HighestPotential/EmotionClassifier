@@ -51,36 +51,43 @@ Here is an overview of the main directories in this repository:
 
 The demo demonstrates real-time emotion classification on video files or GIFs. It detects faces, classifies their prevailing emotion, and optionally overlays visual explanations (heatmaps) to show which parts of the face contributed most to the decision.
 
+### Seting up the virtual environment
 
-
-### How to Run
-
-To run the demo, use the `process_video.py` script located in the `demo` directory.
+Install the provided conda environment using
 
 ```bash
-python demo/process_video.py <input_video_path> [options]
+cd environments
+conda env create -f demo_env.yml
+```
+
+### Running the video script
+
+To run the demo, use the `process_video.py` script located in the `demo/Video` directory:
+
+```bash
+python demo/Video/process_video.py <input_video_path> [options]
 ```
 
 **Examples:**
 
 ```bash
 # Basic usage
-python demo/process_video.py inputs/my_video.mp4
+python demo/Video/process_video.py inputs/my_video.mp4
 
 # Initial run with GradCAM XAI (default)
-python demo/process_video.py inputs/my_video.mp4 --xai gradcam
+python demo/Video/process_video.py inputs/my_video.mp4 --xai gradcam
 
 # Use Integrated Gradients for XAI
-python demo/process_video.py inputs/my_video.mp4 --xai ig
+python demo/Video/process_video.py inputs/my_video.mp4 --xai ig
 
 # Use Haar Cascade/RetinaFace detector
-python demo/process_video.py inputs/my_video.mp4 --face-detector haarcascade
+python demo/Video/process_video.py inputs/my_video.mp4 --face-detector haarcascade
 
 # Save to specific output
-python demo/process_video.py inputs/my_video.mp4 --output results/output.mp4
+python demo/Video/process_video.py inputs/my_video.mp4 --output results/output.mp4
 ```
 
-### Process Video Script (`demo/process_video.py`)
+### Process Video Script (`demo/Video/process_video.py`)
 
 The `process_video.py` script handles the entire inference pipeline:
 1.  **Input Reading**: Supports both standard video formats (`.mp4`, `.avi`, etc.) and `.gif` files via a custom `GifReader`.
@@ -91,12 +98,27 @@ The `process_video.py` script handles the entire inference pipeline:
 6.  **Output**: Annotates the video with bounding boxes, emotion labels, confidence scores, and emojis. Saves as video or GIF depending on the output extension.
 
 
+### Running the image script
+
+To run the demo, use the `process_images.py` script located in the `demo/Image` directory:
+
+```bash
+python demo/Image/process_images.py <input directory> [options]
+```
+
+**Examples:**
+
+```bash
+python demo/Image/process_images.py ./inputs/images
+python demo/Image/process_images.py ./inputs/images -of ./image_results.csv
+```
+
 ## Preprocessing
 
 The preprocessing pipeline ensures high-quality input data by filtering and normalizing raw images before training.
 
 ### Pipeline Structure
-The preprocessing is managed by a pipeline system (see `preprocessing/pipeline.py` and `preprocessing/dataset_runner.py`) that applies a sequence of steps to every image in a dataset folder.
+The preprocessing is managed by a pipeline system (see `preprocessing/pipeline/pipeline.py` and `preprocessing/pipeline/dataset_runner.py`) that applies a sequence of steps to every image in a dataset folder.
 
 ### Filters and Steps
 The standard preprocessing pipeline includes the following steps:
