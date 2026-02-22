@@ -11,3 +11,14 @@ A central component of the framework is its dual-input training strategy. During
 Due to GPU memory constraints on the university server, it was not feasible to replicate the complete architecture including the combined local and global attention modules described in the original formulation. Therefore, a reduced variant consisting of seven convolution layers was implemented. The batch size was limited to 16 samples to remain within available memory limits.
 
 Despite these simplifications, the model remained computationally demanding. Training for 10 epochs required more than 24 hours of runtime. Extended training sessions were occasionally interrupted due to system constraints, making it necessary to implement checkpoint-based continuation to preserve training progress and ensure experimental reproducibility.
+
+\section{Appendix A: Detailed Architecture of the Light Head (Version 3)}
+\label{sec:IR50}
+
+The final InsightFace ResNet-50 (IR50) architecture utilized in this study replaces the standard classification head with a custom ``Light Head'' to mitigate severe overfitting. 
+
+\textbf{Spatial Attention and Dimensionality Reduction:}
+The original IR50 classification head flattened the spatial grid into a 25,088-dimensional vector, feeding it into a 12.8-million-parameter linear layer. This caused the network to memorize exact spatial positions rather than generalized emotional features. To resolve this, we utilized a Global Average Pooling (GAP) layer. Because human emotions are highly localized (e.g., specific micro-expressions around the eyes or mouth), a standard GAP layer would destroy critical spatial context. Therefore, we introduced a Spatial Attention module immediately preceding the GAP layer. This module consists of a Conv1x1 layer followed by a Sigmoid activation, allowing the network to assign learnable weights to important spatial areas before dimensionality reduction.
+
+\textbf{Parameter Efficiency and Training Metrics:}
+The implementation of the Light Head reduced the parameter count of the classification head from 12.8 million to 795,000, bringing the total trainable parameters of the model down to 5.8 million (including the unfrozen \texttt{body4} block). To stabilize training further and eliminate the memorization effect, we reduced the MixUp probability and applied an Exponential Moving Average (EMA) decay. This configuration successfully closed the previously observed 10 percent gap between training and validation accuracy, achieving a peak validation accuracy of 81.38 percent.

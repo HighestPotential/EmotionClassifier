@@ -53,9 +53,15 @@ The video demo demonstrates real-time emotion classification on video files or G
 
 The image demo loads all images located in a directory (and subdirectories). All iomage files are then fed hrough the model in batches and then converted to probabilities usinf the softmax function. The resulting probabilities are then written into a csv file together with the corresponding filename.
 
+<<<<<<< HEAD
 ### Seting up the virtual environment
 
 Install the provided conda environment using
+=======
+### How to Run
+
+To run the demo, use the `process_video.py` script located in the `demo` directory.
+>>>>>>> fbcda860e8dca48736f344b4967b884bbf0e8de9
 
 ```bash
 cd environments

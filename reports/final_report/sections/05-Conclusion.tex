@@ -8,9 +8,9 @@
 \definecolor{mamba}{HTML}{A9CCE3}
 \definecolor{gridcolor}{HTML}{CCCCCC}
 
-\begin{figure*}
+\begin{figure}
 \centering
-\begin{tikzpicture}
+\begin{tikzpicture}[scale=0.55]
 \begin{axis}[
     width=16cm,
     height=8cm,
@@ -100,17 +100,17 @@
 \end{tikzpicture}
 \caption{Model Accuracy vs. Parameter Count evaluated on the CK+ and KDEF datasets.}
 \label{fig:accuracy_vs_params}
-\end{figure*}
+\end{figure}
 
 \section{Conclusion and Retrospective}
 
-This project demonstrates that targeted architectural choices and rigorous evaluation methodologies profoundly impact the success of Facial Expression Recognition systems. The ResNet18+SE architecture performed the best overall, outperforming alternative models by approximately 2 percent. Furthermore, the evaluation of newer architectures, such as the Vision Mamba (Vim) network, revealed that they generalize exceptionally well relative to their minimal parameter counts, confirming that the latest model architectures generally outperform older legacy networks.
+This project demonstrates that targeted architectural choices and rigorous evaluation methodologies profoundly impact the success of Facial Expression Recognition systems. The ResNet18+SE architecture performed the best overall, outperforming alternative model by approximately 2 percent. Furthermore, the evaluation of newer architectures, such as the Vision Mamba (Vim) network, revealed that they generalize exceptionally well relative to their minimal parameter counts, confirming that the latest model architectures generally outperform older legacy networks.
 
 Because emotion datasets are typically small, leveraging transfer learning is highly beneficial for establishing robust initial feature extraction. Extensive data augmentation also proved incredibly helpful for improving model generalization. To accurately measure this generalization, we established that reserving complete, separate datasets exclusively for testing is the ideal evaluation methodology. The training dynamics confirmed that optimal performance requires pairing specific architectures with distinct optimizers, as no single optimizer excelled across both EfficientNet and ResNet configurations.
 
-Attempts to resolve prediction bias utilizing advanced mathematical loss functions, such as Class-Balanced Focal Loss, were ultimately not very. These anti-bias measures often induced dataset memorization rather than solving the underlying data ambiguity. The fear emotion remained hard to guess. Additionally, when attempting to interpret the networks, Grad-CAM was not precise enough for small input images; Integrated Gradients proved to be a significantly better option for extracting reliable, high-resolution visual explanations.
+Attempts to resolve prediction bias utilizing advanced mathematical loss functions, such as Class-Balanced Focal Loss, were ultimately not significantly more successful. These anti-bias measures often induced dataset memorization rather than solving the underlying data ambiguity. The fear emotion remained hard to guess. Additionally, when attempting to interpret the networks, Grad-CAM was not precise enough for small input images; Integrated Gradients proved to be a significantly better option for extracting reliable, high-resolution visual explanations.
 
-\subsection{Retrospective and Future Work}
+\subsection{Retrospective}
 
 Future iterations of this research should continue to prioritize the search for the latest architectural developments and aggressively leverage transfer learning from massive facial datasets. There is also a distinct need to allocate more computational resources toward systematically fine-tuning all hyperparameters. Most importantly, further research must address the severe prediction bias toward the \textit{happiness} class. Subsequent work must investigate exactly why complex, subtle emotions are predicted so poorly and develop targeted, data-driven strategies to improve minority class recognition without compromising global accuracy.
 

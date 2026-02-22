@@ -2,52 +2,75 @@ name: demo
 channels:
   - defaults
 dependencies:
-  - bzip2=1.0.8
-  - ca-certificates=2025.12.2
-  - expat=2.7.4
-  - libexpat=2.7.4
-  - libffi=3.4.4
-  - libzlib=1.3.1
-  - openssl=3.0.19
-  - packaging=25.0
-  - pip=26.0.1
-  - python=3.10.19
-  - setuptools=80.10.2
-  - sqlite=3.51.1
-  - tk=8.6.15
-  - wheel=0.46.3
-  - xz=5.6.4
-  - zlib=1.3.1
+  - python=3.10
+  - pip
   - pip:
+      - absl-py
+      - astunparse
       - batch-face
+      - beautifulsoup4
       - captum
+      - certifi
+      - charset-normalizer
       - colorama
       - contourpy
       - cycler
+      - facenet-pytorch
       - filelock
+      - flatbuffers
       - fonttools
       - fsspec
+      - gast
+      - gdown
+      - google-pasta
+      - grpcio
+      - h5py
+      - idna
       - jinja2
+      - keras
       - kiwisolver
+      - libclang
+      - markdown
+      - markdown-it-py
       - markupsafe
       - matplotlib
+      - mdurl
+      - ml-dtypes
       - mpmath
+      - namex
       - networkx
       - numpy
       - opencv-python
       - opencv-transforms
+      - opt-einsum
+      - optree
       - pandas
       - pillow
+      - protobuf
+      - pygments
       - pyparsing
+      - pysocks
       - python-dateutil
       - pytz
+      - requests
+      - retina-face
+      - rich
       - scipy
+      - seaborn
       - six
       - sixdrepnet
+      - soupsieve
       - sympy
+      - tensorboard
+      - tensorboard-data-server
+      - tensorflow
+      - termcolor
+      - tf-keras
       - torch
       - torchvision
       - tqdm
       - typing-extensions
       - tzdata
-prefix: C:\Users\dmytr\.conda\envs\demo
+      - urllib3
+      - werkzeug
+      - wrapt

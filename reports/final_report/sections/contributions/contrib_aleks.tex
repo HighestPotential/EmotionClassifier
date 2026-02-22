@@ -1,1 +1,29 @@
-\TODO{Add contrib}
+\begin{description}
+  \item [Lighting filter]: A preprocessing module for removing poorly exposed images
+
+    A \texttt{LightingFilter} was developed to analyze intensity statistics and discard samples that are excessively dark, overly bright, or lack sufficient contrast. The filter was used during the early preprocessing phase to improve overall data quality and reduce noisy training samples.
+
+  \item [RGB standardization]: A preprocessing utility for consistent input format
+
+    A \texttt{toRGB} conversion step was added to standardize all inputs to a consistent $H \times W \times 3$ RGB format. This ensured compatibility across datasets containing mixed grayscale and RGB images and simplified downstream tensor processing.
+
+  \item [ResNet18 + SE model]: Final backbone and attention design
+
+    A ResNet18 backbone with Squeeze-and-Excitation (SE) attention blocks was implemented and became the final architecture used for the best-performing configuration. A ResNet18+CBAM variant was also trained and evaluated; however, results were very similar and SE performed slightly better, so the SE-based architecture was retained.
+
+  \item [Imbalance-aware loss functions]: Loss design and evaluation
+
+    Class-balanced focal loss was introduced as the primary strategy for handling class imbalance, alongside weighted cross-entropy as a baseline. Empirical comparisons showed that class-balanced focal loss achieved stronger performance, leading to its adoption in the final pipeline.
+
+  \item [Optimizer and loss ablations]: Training experiments and comparison plots
+
+    Controlled ablation studies were conducted for ResNet18+SE to compare optimizer and loss combinations, including SGD vs.\ AdamW and class-balanced focal loss vs.\ weighted cross-entropy. The resulting training curves and performance comparisons were included in the final report.
+
+  \item [Explainable AI prototypes]: Development and evaluation of interpretability methods
+
+    A Grad-CAM prototype was created as an initial interpretability baseline, but produced coarse explanations at $64 \times 64$ resolution. Additional attribution methods were evaluated, including occlusion-based analysis and Integrated Gradients. Integrated Gradients yielded the most informative and fine-grained explanations and was used in the final qualitative analysis.
+
+  \item [Additional dataset contribution]: Dataset discovery and preprocessing
+
+    The DFEW dataset was identified as an additional data source and contributed to the group. Preprocessing and dataset-specific cleaning steps were created to integrate DFEW into the standardized pipeline.
+\end{description}
