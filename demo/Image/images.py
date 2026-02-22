@@ -1,7 +1,7 @@
 # |===================================================================================================|
 # |Usage:                                                                                             |
 # |===================================================================================================|
-# |python3 main.py [in_dir] [out_file]                                                                |
+# |python3 main.py [in_dir] -of [out_file]                                                                |
 # |                                                                                                   |
 # |in_dir is the directory where all the images to evaluate are located                               |
 # |out_file is the final csv file where filepaths and respective probabilites for ech class are stored|

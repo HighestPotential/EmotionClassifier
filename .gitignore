@@ -540,3 +540,5 @@ new_preprocessed_dataset/
 preprocessed_dataset/
 ready_to_use_datasets/
 *.mp4 
+
+*.pth

@@ -55,67 +55,34 @@ the models started overfitting early on due to the high parameter count. As a re
 
 \subsection{EfficientNetV2-S Optimization Dynamics}
 EfficientNetV2-S ultimately emerged as one of the top two best-performing models across all validation benchmarks. To ensure a rigorous comparison, we empirically optimized and tuned each optimizer to find its stable configuration.
-
 \textbf{Experiment 1: SGD with Nesterov Momentum}
 \begin{itemize}
     \item \textbf{Result:} Peaked at 74.25 percent validation accuracy.
     \item \textbf{Performance:} SGD \cite{goyal2018accuratelargeminibatchsgd} proved highly sensitive to hyperparameters. Slight alterations in the learning rate caused massive performance swings, ranging from a complete failure to learn (stagnating below 40 percent accuracy) to achieving a moderate peak of approximately 75 percent.
     \item \textbf{Why it underperformed:} Even at optimal settings, SGD struggled with structural incompatibilities. It applies a uniform learning rate across the network, causing it to under-train depthwise layers while over-training pointwise layers. It lacks the variance tracking required to stabilize the contradictory signals arising from 10 distinct data sources, and it struggles to converge when targets are ambiguous soft labels from Mixup.
 \end{itemize}
-
 \textbf{Experiment 2: AdamW}
 \begin{itemize}
     \item \textbf{Result:} Peaked at 83.10 percent validation accuracy.
     \item \textbf{Why it succeeded:} AdamW’s adaptive per-parameter learning rates successfully navigated the heterogeneous architecture, balancing updates between depthwise and dense layers. It provided consistent convergence but exhibited mild overfitting in the final epochs.
 \end{itemize}
-
 \textbf{Experiment 3: SAM + AdamW (Sharpness-Aware Minimization)}
 \begin{itemize}
-    \item \textbf{Result:} Projected to reach 84--86 percent accuracy.
-    \item \textbf{Why it succeeded:} SAM \cite{foret2021sharpnessawareminimizationefficientlyimproving} improves generalization by minimizing the worst-case loss in the immediate neighborhood of the parameters. This forces the model into flat, stable minima, which is critical for handling the distributional shifts between our 10 diverse datasets. This robustness allowed it to outperform standard AdamW on the most challenging out-of-distribution test sets (e.g., AffectNet).
+    \item \textbf{Result:} Peaked at 82.46 percent validation accuracy.
+    \item \textbf{Performance Dynamics:} SAM \cite{foret2021sharpnessawareminimizationefficientlyimproving} improves generalization by minimizing the worst-case loss in the immediate neighborhood of the parameters, forcing the model into flat, stable minima. While it slightly underperformed the standard AdamW on the validation dataset, it demonstrated superior generalization stability. The drop in accuracy between the validation and test datasets was smaller for SAM, indicating robust out-of-distribution performance. However, its final absolute accuracy on the test dataset remained nearly identical to the simple AdamW baseline, differing by approximately -1 percent. Ultimately, this marginal improvement in generalization stability was outweighed by the severe computational burden of evaluating the network twice per step.
 \end{itemize}
 
-\begin{table}[ht]
-\centering
-\begin{tabular}{lc}
-\toprule
-Optimizer & Peak Validation Accuracy \\
-\midrule
-SGD & 74.25\% \\
-AdamW & 83.10\% \\
-\textbf{SAM + AdamW} & \textbf{Projected 84--86\%} \\
-\bottomrule
-\end{tabular}
-\caption{Comparison of optimizer performance on EfficientNetV2-S.}
-\label{tab:optimizers}
-\end{table}
 
 \subsection{Evaluation of Class Imbalance and Prediction Bias}
-To quantify the impact of dataset imbalance, we evaluated the EfficientNetV2-S model trained using standard sampling techniques. The validation results exposed a severe disparity in per-class accuracy, confirming the theoretical bias toward visually distinct majority classes.
 
-As presented in Table \ref{tab:bias_evaluation}, the model achieved a global accuracy of 60.17\%. However, the per-class breakdown reveals that the network massively over-predicted the \textit{happiness} class (96.62\% accuracy), while almost entirely failing to recognize \textit{fear} (17.20\% accuracy) and \textit{disgust} (29.99\% accuracy).
+Evaluating the EfficientNetV2-S baseline model exposed a severe prediction bias: despite a global accuracy of 60.17\%, the network over-predicted \textit{happiness} (96.62\%) while failing on \textit{fear} (17.20\%) and \textit{disgust} (29.99\%). To address this disparity, we evaluated two advanced anti-bias functions: Class-Balanced Focal Loss (CB-FL) and Label-Distribution-Aware Margin Loss (LDAM) with Deferred Re-Weighting (DRW). 
 
-\begin{table}[ht]
-\centering
-\begin{tabular}{lcc}
-\toprule
-\textbf{Emotion Class} & \textbf{Accuracy (\%)} & \textbf{Correct / Total} \\
-\midrule
-Happiness & 96.62\% & 743 / 769 \\
-Surprise & 83.80\% & 652 / 778 \\
-Sadness & 66.71\% & 483 / 724 \\
-Anger & 63.36\% & 472 / 745 \\
-Disgust & 29.99\% & 224 / 747 \\
-Fear & 17.20\% & 124 / 721 \\
-\midrule
-\textbf{Global} & \textbf{60.17\%} & \textbf{2698 / 4484} \\
-\bottomrule
-\end{tabular}
-\caption{Validation accuracy demonstrating severe prediction bias toward the majority class.}
-\label{tab:bias_evaluation}
-\end{table}
-
-The deployment of LDAM-DRW directly addresses this disparity. By enforcing wider margins for \textit{fear} and \textit{disgust} and deferring the re-weighting until the final training phase, the model is penalized for default \textit{happiness} predictions, yielding a more uniform performance distribution across all six target categories.
+While these techniques successfully forced the network to fixate on difficult images, performance improvements were strictly limited to the training dataset. During true cross-dataset testing on unseen CK+ and KDEF faces, minority class accuracies remained stagnant or declined, and global accuracy fell by approximately 3\%. This performance degradation stems from three primary factors:
+\begin{itemize}
+    \item \textbf{Dataset Memorization:} Chasing strict mathematical fairness on small, noisy distributions caused the models to overfit to specific training lighting and identities rather than generalizable features.
+    \item \textbf{Data Ambiguity:} Subjective emotions like \textit{fear} and \textit{disgust} contain inherent label noise. Forcing the algorithm to perfectly separate these overlapping concepts exacerbates overfitting.
+\item \textbf{Hyperparameter Tuning:} The degradation might stem from suboptimal configurations. For example, setting margin boundaries or focal penalties too aggressively can severely disrupt generalization, indicating a need for further systematic tuning to discover the optimal balance.
+\end{itemize}
 
 \subsection{GAN}
 
