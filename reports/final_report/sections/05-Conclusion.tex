@@ -147,3 +147,15 @@ While our system achieves competitive performance, several limitations and oppor
 \subsection{Final Remarks}
 
 The facial emotion classification system presented in this report demonstrates the effectiveness of combining careful data preprocessing, attention mechanisms, and appropriate loss functions for emotion recognition tasks. The model's interpretability through Grad-CAM analysis confirms that it learns meaningful emotional representations. Future work should focus on improving robustness to challenging conditions and exploring more advanced architecture designs, particularly with emerging transformer-based models. The comprehensive multi-dataset evaluation framework established in this project provides a solid foundation for continued research in this important area of computer vision.
+
+
+\appendix
+\section{Statement of Contributions}
+
+\subsection*{Dmytro}
+\begin{description}
+    \item[Model Training and Experimentation:] Led the training and evaluation of EfficientNetV2-S (and its associated configurations), CCT-7, Vim-tiny, and explored the ConvNeXt V2 architecture. Conducted transfer learning experiments utilizing the IR50 backbone. Executed the final robustness tests for the ResNet18+SE model across various hyperparameters, which confirmed baseline stability despite yielding identical final accuracies.
+    \item[Data Pipeline and Preprocessing:] Enhanced and developed segments of the data preprocessing pipeline by implementing Fast Fourier Transform (FFT) for an improved version of blur filtering, introducing facial roll correction, yaw correction, and optimizing boundary margin resizing to ensure minimal residual margins post-cropping or square image outputs. Collaborated directly with Tiago to determine and execute the optimal combination of preprocessing operations tailored to each specific dataset.
+    \item[System Integration and Explainability:] Engineered a live demonstration script designed to process video input and output continuously annotated video streams, integrating real-time emotion classification alongside Explainable AI (XAI) visual overlays.
+    \item[Research and Organization:] Sourced approximately 90 percent of the datasets introduced during the second project phase. Conducted extensive literature reviews to identify and propose alternative network architectures. Facilitated project management by structuring team meetings and designed the foundational architecture of the project's README documentation.
+\end{description}
