@@ -19,7 +19,7 @@ As illustrated in the Figure \ref{fig:processed_images_distribution}, the aggreg
 
 For the final training phase, CK+ and KDEF \cite{kdef} were deliberately excluded from the training set in order to evaluate the generalization capability of the proposed model on unseen datasets. It is important to emphasize that both datasets are relatively balanced.
 
-KDEF also contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions. Although the images were resized to $64 \times 64$ pixels to meet the architectural requirements of this study, the dataset remains valuable for assessing cross-dataset robustness due to its standardized acquisition setup.
+KDEF contains high-quality, well-controlled facial images captured under consistent lighting and pose conditions, including photos from multiple angles up to 90º. This increased variation in viewpoint makes it more challenging for our models to accurately predict the expressions, which explains their lower performance on KDEF. Although the images were resized to $64 \times 64$ pixels to meet the architectural requirements of this study, the dataset remains valuable for assessing cross-dataset robustness due to its standardized acquisition setup. 
 
 By excluding CK+ and KDEF from training, these datasets served as independent test sets, enabling a more rigorous evaluation of cross-dataset generalization performance.
 
