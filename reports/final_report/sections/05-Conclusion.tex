@@ -102,27 +102,17 @@
 \label{fig:accuracy_vs_params}
 \end{figure*}
 
-\section{Conclusion}
+\section{Conclusion and Retrospective}
 
-This project successfully developed a comprehensive emotion classification system for facial expressions. We implemented a complete pipeline from raw image data through preprocessing to model training and evaluation, utilizing state-of-the-art deep learning techniques.
+This project demonstrates that targeted architectural choices and rigorous evaluation methodologies profoundly impact the success of Facial Expression Recognition systems. The ResNet18+SE architecture performed the best overall, outperforming alternative models by approximately 2 percent. Furthermore, the evaluation of newer architectures, such as the Vision Mamba (Vim) network, revealed that they generalize exceptionally well relative to their minimal parameter counts, confirming that the latest model architectures generally outperform older legacy networks.
 
-\subsection{Key Contributions}
+Because emotion datasets are typically small, leveraging transfer learning is highly beneficial for establishing robust initial feature extraction. Extensive data augmentation also proved incredibly helpful for improving model generalization. To accurately measure this generalization, we established that reserving complete, separate datasets exclusively for testing is the ideal evaluation methodology. The training dynamics confirmed that optimal performance requires pairing specific architectures with distinct optimizers, as no single optimizer excelled across both EfficientNet and ResNet configurations.
 
-\begin{enumerate}
-    \item \textbf{Robust Preprocessing Pipeline}: Developed comprehensive preprocessing procedures including face detection, alignment, deduplication, and quality filtering that significantly improved dataset quality and model robustness.
-    
-    \item \textbf{Attention-Enhanced Architecture}: Integrated Squeeze-and-Excitation blocks into ResNet-18, demonstrating consistent performance improvements over baseline models.
-    
-    \item \textbf{Class-Balanced Training}: Employed focal loss to address class imbalance, resulting in more balanced performance across emotion categories.
-    
-    \item \textbf{Multi-Dataset Evaluation}: Comprehensive evaluation across multiple emotion datasets demonstrated model generalization capabilities and robustness across domain shifts.
-    
-    \item \textbf{Model Interpretability}: Applied Grad-CAM visualization to validate that the model learns emotion-specific facial features, providing insight into the decision-making process.
-\end{enumerate}
+Attempts to resolve prediction bias utilizing advanced mathematical loss functions, such as Class-Balanced Focal Loss, were ultimately not very. These anti-bias measures often induced dataset memorization rather than solving the underlying data ambiguity. The fear emotion remained hard to guess. Additionally, when attempting to interpret the networks, Grad-CAM was not precise enough for small input images; Integrated Gradients proved to be a significantly better option for extracting reliable, high-resolution visual explanations.
 
-\subsection{Limitations and Future Work}
+\subsection{Retrospective and Future Work}
 
-While our system achieves competitive performance, several limitations and opportunities for future work exist:
+Future iterations of this research should continue to prioritize the search for the latest architectural developments and aggressively leverage transfer learning from massive facial datasets. There is also a distinct need to allocate more computational resources toward systematically fine-tuning all hyperparameters. Most importantly, further research must address the severe prediction bias toward the \textit{happiness} class. Subsequent work must investigate exactly why complex, subtle emotions are predicted so poorly and develop targeted, data-driven strategies to improve minority class recognition without compromising global accuracy.
 
 \subsubsection{Limitations}
 
