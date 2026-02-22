@@ -21,7 +21,7 @@ except ImportError:
 BATCH_SIZE = 16
 ACCUM_STEPS = 8          # 16 * 8 = 128 Effective Batch Size (Stable for SAM)
 EPOCHS = 100
-LR = 0.0005 * (BATCH_SIZE / 256) # Scale LR
+LR = 0.0005 * (BATCH_SIZE / 256) 
 WEIGHT_DECAY = 0.05
 IMG_SIZE = 64
 NUM_WORKERS = 8
@@ -30,14 +30,10 @@ VALIDATE_FREQ = 5        # Validate every 5 epochs
 DATASET_ROOT = '/home/d/dumanskyy/work/EmotionClassifier/latest_3_0_ready_to_use_datasets'
 CLASSES = ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise']
 
-# ZERO-SHOT CONFIG: Exclude Target Domains from Training
-# We train on large datasets, test on KDEF/CK+/JAFFE
 DATASETS = ['AffectNet', 'CKplusIm', 'FERPlus', 'RAF-DB', 'KDEFFormated',\
      'jaffeFormated', 'MMAFEDB', 'ExpWFormated', 'EmoSet-118k', 'NHFI']
-# PROHIBITED: 'CKplusIm', 'KDEFFormated', 'jaffeFormated'
+# PROHIBITED: 'CKplusIm', 'KDEFFormated'
 
-# --- Transforms (V2 Safe List) ---
-# Transformers need this extra variety to avoid memorizing pixels.
 ROTATION_DEG = 15       
 TRANSLATE_FRAC = 0.05   
 COLOR_JITTER = 0.2      
@@ -47,10 +43,8 @@ GRAYSCALE_PROB = 0.2
 transform_train = v2.Compose([
     v2.Resize((IMG_SIZE, IMG_SIZE)),
     
-    # Geometric Safety (Reflection Padding)
     v2.Pad(padding=8, padding_mode='reflect'),
     
-    # Safe Geometry
     v2.RandomChoice([
         v2.RandomRotation(degrees=ROTATION_DEG), 
         v2.RandomAffine(degrees=0, translate=(TRANSLATE_FRAC, TRANSLATE_FRAC)),
@@ -60,7 +54,6 @@ transform_train = v2.Compose([
     
     v2.CenterCrop(IMG_SIZE),
 
-    # Photometric
     v2.RandomApply([
         v2.ColorJitter(brightness=COLOR_JITTER, contrast=COLOR_JITTER, saturation=COLOR_JITTER)
     ], p=0.4),
@@ -81,10 +74,11 @@ transform_val = v2.Compose([
     v2.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 ])
 
-# Use raw transform for initial loading to calculate stats if needed (skipped here, using fixed CCT norm)
-transform_raw = transforms.Compose([
-    transforms.Resize((IMG_SIZE, IMG_SIZE)),
-    transforms.ToTensor()
+transform_val = v2.Compose([
+    v2.Resize((IMG_SIZE, IMG_SIZE)),
+    v2.ToImage(), 
+    v2.ToDtype(torch.float32, scale=True),
+    v2.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 ])
 
 # ## 1. Data Loading

@@ -7,9 +7,7 @@ from torchvision import transforms
 from PIL import Image
 from tqdm import tqdm
 
-# Constants
 TEST_DATA_ROOT = "/home/d/dumanskyy/work/EmotionClassifier/test_datasets"
-# Path to the specific weights found in the directory
 WEIGHTS_PATH = "/home/d/dumanskyy/work/EmotionClassifier/models/dmytro/CCT-7/model_best.pth"
 CLASSES = ["anger", "disgust", "fear", "happiness", "sadness", "surprise"]
 CLASS_TO_IDX = {name: i for i, name in enumerate(CLASSES)}
@@ -17,8 +15,6 @@ IMG_SIZE = 64
 BATCH_SIZE = 128
 NUM_WORKERS = 4
 
-# Import Model
-# Ensure we can import custom_cct from the same directory
 import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
@@ -42,7 +38,7 @@ class RecursiveUniversalDataset(Dataset):
         self.samples = []
         self.class_to_idx = class_to_idx
         self.transform = transform
-        self.dataset_stats = {}  # "DatasetName": {"total": 0, "correct": 0}
+        self.dataset_stats = {}
 
         for root_path in root_dirs:
             dataset_name = os.path.basename(root_path)
@@ -102,8 +98,6 @@ def main():
         print("No datasets found!")
         return
 
-    # Transforms (Standard for CCT based on CCT3x1.py)
-    # v2.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) -> same as standard
     eval_tfm = transforms.Compose([
         transforms.Resize((IMG_SIZE, IMG_SIZE)),
         transforms.ToTensor(),

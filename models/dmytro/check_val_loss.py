@@ -8,7 +8,6 @@ import timm
 from tqdm import tqdm
 from timm.utils import ModelEmaV2
 
-# Config matching efficent_net_v2.py
 IMG_SIZE = 64
 MEAN = [0.4681, 0.4447, 0.4560]
 STD = [0.2327, 0.2227, 0.2224]

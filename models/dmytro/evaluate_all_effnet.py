@@ -10,14 +10,13 @@ import timm
 
 # Constants
 TEST_DATA_ROOT = "/home/d/dumanskyy/work/EmotionClassifier/test_datasets"
-# Found efficientnetv3_best.pth in the directory
 WEIGHTS_PATH = "/home/d/dumanskyy/work/EmotionClassifier/models/dmytro/EfficentNetV2_v2_sam/efficientnetv2_last.pth"
 CLASSES = ["anger", "disgust", "fear", "happiness", "sadness", "surprise"]
 CLASS_TO_IDX = {name: i for i, name in enumerate(CLASSES)}
 IMG_SIZE = 64
 BATCH_SIZE = 128
 NUM_WORKERS = 8
-DROP_PATH_RATE = 0.3 # Matching training config
+DROP_PATH_RATE = 0.3
 
 def get_device():
     if torch.cuda.is_available():
@@ -135,8 +134,6 @@ def main():
         try:
              ckpt = torch.load(WEIGHTS_PATH, map_location=device)
              
-             # The checkpoint saves state dicts for: model_state_dict, model_ema_state_dict
-             # Usually EMA is better for validation
              if 'model_ema_state_dict' in ckpt:
                  print("Loading EMA weights...")
                  model.load_state_dict(ckpt['model_ema_state_dict'])
@@ -171,8 +168,7 @@ def main():
             # Original Inference
             logits = model(imgs)
             
-            # TTA: Horizontal Flip
-            imgs_flip = torch.flip(imgs, [3]) # Flip width (dim 3: N, C, H, W)
+            imgs_flip = torch.flip(imgs, [3])
             logits_flip = model(imgs_flip)
             
             # Average Logits

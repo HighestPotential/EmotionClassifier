@@ -8,8 +8,6 @@ import torchvision
 import torchvision.transforms as transforms
 import numpy as np
 import matplotlib.pyplot as plt
-# Removed TensorBoard to prevent TensorFlow conflicts/crashesw
-# from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 from tqdm import tqdm
 from balanced_loss import Loss
@@ -44,14 +42,6 @@ CLASSES = ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise']
 # Set seeds
 torch.manual_seed(42)
 np.random.seed(42)
-
-
-# ## 1. Data Loading and Visualization
-# 
-# We will load datasets from the `ready_to_use_datasets` folder. We use `train` for training and `eval` for validation. `test` is reserved.
-
-# In[ ]:
-
 
 transform = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
@@ -145,9 +135,6 @@ criterion = Loss(
 
 optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=MOMENTUM)
 
-# --- AMP: Initialize GradScaler ---
-# GradScaler is essential for mixed precision training.
-# It scales the loss to prevent underflow (vanishing gradients) when using float16.
 scaler = torch.amp.GradScaler('cuda')
 
 
@@ -196,11 +183,8 @@ def train_one_epoch(epoch_index):
         if (i + 1) % ACCUM_STEPS == 0:
             scaler.step(optimizer)
             scaler.update()
-            optimizer.zero_grad() # Optional: zero here or at start (safer at start usually, but here is standard)
+            optimizer.zero_grad() 
 
-        # Accumulate Loss and Accuracy 
-        # IMPORTANT: Explicitly cast to python float() to detach from the computational graph.
-        # If we just do `loss.item()`, sometimes PyTorch might hold onto the graph history, causing VRAM leaks.
         loss_val = float(loss.item())
         
         # Epoch aggregates (weight by batch_size)

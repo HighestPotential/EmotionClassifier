@@ -288,10 +288,10 @@ class VideoProcessor:
             return cv2.cvtColor(np.array(pil_im), cv2.COLOR_RGB2BGR)
 
         # On Linux/Other (ASCII only), use cv2.putText for reliable scaling
-        # User requested size relative to face width
-        # Heuristic: face_w=200px -> scale=1.0
-        font_scale = max(0.5, face_w / 200.0)
-        thickness = max(1, int(font_scale * 2))
+        # User requested size relative to face width 
+        # Heuristic: face_w=200px -> scale=0.7 
+        font_scale = max(0.4, (face_w / 200.0) * 0.7)
+        thickness = max(1, int(font_scale * 1.5))
         
         cv2.putText(
             frame,
@@ -354,8 +354,8 @@ class VideoProcessor:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         scale = min(width, height) / 720.0
-        # For PIL (Windows/Mac) scaling
-        font_size = max(40, int(80 * scale))
+        # For PIL (Windows/Mac) scaling - made slightly smaller
+        font_size = max(25, int(60 * scale))
         self.font = self._load_emoji_font(font_size)
         
         # Box thickness scaled to resolution

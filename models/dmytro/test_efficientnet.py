@@ -18,14 +18,12 @@ except ImportError:
     BATCH_FACE_AVAILABLE = False
 
 
-# --- Configuration (Copied from efficent_net_v2.py) ---
 CLASSES = ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise']
 IMG_SIZE = 64
 MEAN = [0.4681, 0.4447, 0.4560]
 STD = [0.2327, 0.2227, 0.2224]
 DROP_PATH_RATE = 0.2
 
-# --- Model Factory (EfficientNetV2) ---
 def create_cifar_efficientnet():
     print("Creating EfficientNetV2-S with Overfitting Fix...")
     model = timm.create_model(
@@ -41,11 +39,10 @@ def create_cifar_efficientnet():
         in_channels=old_stem.in_channels,
         out_channels=old_stem.out_channels,
         kernel_size=old_stem.kernel_size,
-        stride=(1, 1), # CRITICAL FIX
+        stride=(1, 1),
         padding=old_stem.padding,
         bias=False
     )
-    # Re-init stem
     nn.init.kaiming_normal_(model.conv_stem.weight, mode='fan_out', nonlinearity='relu')
     
     return model
@@ -53,7 +50,6 @@ def create_cifar_efficientnet():
 # --- Model Factory (Vim) ---
 def create_vim_model():
     print("Creating Vim-Tiny Model...")
-    # Add Vim directory to sys.path to allow imports
     vim_path = '/home/d/dumanskyy/work/EmotionClassifier/models/dmytro/VIM/Vim/vim'
     if vim_path not in sys.path:
         sys.path.append(vim_path)
@@ -67,8 +63,8 @@ def create_vim_model():
 
     model = VisionMamba(
         img_size=IMG_SIZE,
-        patch_size=8,  # CHANGED from 16 to 8 based on checkpoint analysis
-        stride=8,      # CHANGED to match patch_size
+        patch_size=8,
+        stride=8,
         embed_dim=192, 
         depth=24, 
         rms_norm=True, 
@@ -91,20 +87,16 @@ class FaceCropper:
     def __init__(self, device='cuda'):
         self.device = device
         if BATCH_FACE_AVAILABLE:
-            # gpu_id=0 if cuda, else -1. 
             gpu_id = 0 if device == 'cuda' else -1
             self.detector = RetinaFace(gpu_id=gpu_id)
         else:
             self.detector = None
 
-# We need a custom Dataset or Transform to handle cropping BEFORE ToTensor/Normalize.
 class CroppedDataset(torchvision.datasets.ImageFolder):
     def __init__(self, root, transform=None, crop_faces=False, device='cuda'):
         try:
-             super().__init__(root, transform=None) # We apply transform manually
+             super().__init__(root, transform=None)
         except Exception as e:
-             # If root is not valid image folder structure, ImageFolder might fail init or return empty
-             # We let it bubble or handle inside the try/except of evaluate_split
              raise e
              
         self.final_transform = transform
@@ -113,14 +105,11 @@ class CroppedDataset(torchvision.datasets.ImageFolder):
         
     def __getitem__(self, index):
         path, target = self.samples[index]
-        # Load image using generic loader (PIL)
         sample = self.loader(path)
         
         if self.crop_faces and self.cropper and self.cropper.detector:
             try:
-                # PIL -> Numpy RGB
                 img_np = np.array(sample)
-                # RetinaFace expects RGB? usually yes.
                 
                 faces = self.cropper.detector(img_np, threshold=0.9)
                 if faces:
@@ -130,7 +119,6 @@ class CroppedDataset(torchvision.datasets.ImageFolder):
                     box, _, _ = best_face
                     x1, y1, x2, y2 = map(int, box)
                     
-                    # Padding (from cropp_face.py)
                     w = x2 - x1
                     h = y2 - y1
                     pad_w = int(w * 0.4)
@@ -280,7 +268,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Check paths
     if not os.path.exists(args.weights):
         print(f"Error: Weights file not found at {args.weights}")
         return
@@ -340,10 +327,6 @@ def main():
         print(f"[Warning] Unexpected Keys: {len(unexpected)}")
         
     print("Weights loaded successfully.")
-    
-    # --- Auto-Discovery of Valid Datasets ---
-    # We want to find folders that contain the emotion classes (e.g. 'anger', 'happiness')
-    # and evaluate them.
     
     dirs_to_evaluate = []
     

@@ -46,8 +46,7 @@ CUTMIX_ALPHA = 0.2
 LABEL_SMOOTHING = 0.1
 WARMUP_EPOCHS = 5
 
-# --- CB-FL Specific: Mixup probability reduced (Option C) ---
-MIXUP_PROB = 0.3  # Only 30% of batches get Mixup; 70% use CB-FL with hard targets
+MIXUP_PROB = 0.3  
 
 # --- CB-FL Hyperparameters ---
 CBFL_BETA = 0.9999
@@ -64,9 +63,6 @@ GRAYSCALE_PROB = 0.3
 MEAN = [0.4681, 0.4447, 0.4560]
 STD = [0.2327, 0.2227, 0.2224]
 
-# =====================================================================
-# CLASS-BALANCED FOCAL LOSS (Cui et al., CVPR 2019 + Lin et al., 2017)
-# =====================================================================
 class ClassBalancedFocalLoss(nn.Module):
     """
     Combines two ideas:
