@@ -32,17 +32,7 @@ Here is an overview of the main directories in this repository:
 
 ## Model Performance and Efficiency
 
-| Model Architecture | Parameters (Millions) | Accuracy (CK+ & KDEF) |
-| :--- | :--- | :--- |
-| **ResNet18+SE** | 12.0 | 68.60% |
-| **EfficientNet V2-S** | 21.5 | 67.20% |
-| **Custom IR50 (ArcFace)** | 31.7 | 64.67% |
-| **ResNet18** | 11.7 | 55.70% |
-| **ResNet34** | 21.8 | 51.30% |
-| **CCT-7** | 3.7 | 49.40% |
-| **Vim-Tiny** | 7.0 | 49.26% |
-| **GoogLeNet** | 6.8 | 47.50% |
-| **Basic CNN** | 0.5 | 16.60% |
+![Model Accuracy vs. Parameter Count](resources/accuracy_vs_params.png)
 
 ## Demo
 
