@@ -66,7 +66,7 @@ def main(input: str, output: str) -> None:
     filepath = Path(__file__)
     weightsPath = filepath.parent.absolute() / "ResNet18_trained.pth" 
 
-    output_headers = ["Filepath", "Anger", "Disgust", "Fear", "Happiness", "Sadness", "Surprise"]
+    output_headers = ["filepath", "anger", "disgust", "fear", "happiness", "sadness", "surprise"]
 
     model = ResNet18SE()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
