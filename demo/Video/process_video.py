@@ -5,7 +5,8 @@ and writes the annotated result to a new video file.
 
 Face detection back-ends
 ------------------------
-- **retinaface** (default) — deep-learning detector, more accurate.
+- **retinaface** (default) — deep-learning detector, more accurate, 
+        but takes very long time to process.
 - **haarcascade** — classic OpenCV Haar-cascade, faster but less robust.
 
 Usage examples
@@ -189,10 +190,8 @@ class VideoProcessor:
             cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
             self.face_cascade = cv2.CascadeClassifier(cascade_path)
         else:
-            from batch_face import RetinaFace as _RetinaFace
-            self._retina_detector = _RetinaFace(
-                gpu_id=0 if self.device == 'cuda' else -1
-            )
+            from retinaface import RetinaFace as _RetinaFace
+            self._retina_detector = _RetinaFace
 
         self.model = self._setup_model(checkpoint_path)
 
@@ -210,7 +209,6 @@ class VideoProcessor:
         elif self.xai_method == "ig":
             self.xai = IntegratedGradientsHelper(self.model, n_steps=50)
 
-        # Font is loaded in process() once we know the video resolution
         self.font = None
         self.text_offset = 30
         self.box_thickness = 2
@@ -287,9 +285,7 @@ class VideoProcessor:
 
             return cv2.cvtColor(np.array(pil_im), cv2.COLOR_RGB2BGR)
 
-        # On Linux/Other (ASCII only), use cv2.putText for reliable scaling
-        # User requested size relative to face width 
-        # Heuristic: face_w=200px -> scale=0.7 
+
         font_scale = max(0.4, (face_w / 200.0) * 0.7)
         thickness = max(1, int(font_scale * 1.5))
         
@@ -316,22 +312,31 @@ class VideoProcessor:
 
     def _detect_faces(self, frame, frame_w, frame_h):
         """Return a list of (x, y, w, h) bounding boxes."""
+        min_face = max(60, int(min(frame_w, frame_h) * 0.10))
+
         if self.face_detector == "haarcascade":
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            min_face = max(60, int(min(frame_w, frame_h) * 0.10))
             detections = self.face_cascade.detectMultiScale(
                 gray, 1.1, 15, minSize=(min_face, min_face)
             )
             return list(detections)
 
-        # RetinaFace (batch_face API)
+        # Standard RetinaFace (serengil package)
+        # It expects BGR or RGB; it returns a dict of faces
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        detections = self._retina_detector(rgb, threshold=0.5)
+        # threshold is called 'threshold' in detect_faces
+        obj = self._retina_detector.detect_faces(rgb, threshold=0.9)
+        
         faces = []
-        if detections:
-            for box, _landmarks, _score in detections:
-                x1, y1, x2, y2 = map(int, box)
-                faces.append((x1, y1, x2 - x1, y2 - y1))
+        if isinstance(obj, dict):
+            for key in obj.keys():
+                identity = obj[key]
+                facial_area = identity["facial_area"]
+                # facial_area is [x1, y1, x2, y2]
+                x1, y1, x2, y2 = facial_area
+                w, h = x2 - x1, y2 - y1
+                if w >= min_face and h >= min_face:
+                    faces.append((x1, y1, w, h))
         return faces
 
     # ---- main loop ----
@@ -373,16 +378,16 @@ class VideoProcessor:
         print(f"Input : {input_path}  ({width}x{height} @ {fps:.1f} fps, {total_frames} frames)")
         print(f"Output: {output_path}")
 
-        # How many frames between each processing step (≈ 5× per second)
-        process_every = max(1, int(round(fps / 5.0)))
+        # How many frames between each processing step (≈ 3× per second)
+        process_every = max(1, int(round(fps / 3.0)))
 
         # Tracking state  (same as demo.py)
         active_tracks = {}
         next_track_id = 0
         cached_results = []
         
-        # Check OS for emoji support
-        use_emoji = platform.system() in ["Windows", "Darwin"]
+        # Emojis disabled manually to avoid confusion with face detectors
+        use_emoji = platform.system() in ["Windows"]
 
         frame_idx = 0
         while True:
