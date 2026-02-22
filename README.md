@@ -1,6 +1,8 @@
 # EmotionClassifier
 
-A comprehensive repository for emotion classification using various deep learning architectures, including EfficientNetV2, Vision Mamba (Vim), ResNet18, and IR50. This project includes a complete pipeline from preprocessing and training to a functional video processing demo with Explainable AI (XAI) capabilities.
+A comprehensive repository for emotion classification using various deep learning architectures, including EfficientNetV2, Vision Mamba (Vim), ResNet18-SE, and IR50. This project includes a complete pipeline from preprocessing and training to a functional video processing demo with Explainable AI (XAI) capabilities.
+
+*Note: The demo outputs below were generated using the **ResNet18-SE** architecture.*
 
 | GradCAM | Integrated Gradients |
 |---------|---------------------|
@@ -27,6 +29,20 @@ Here is an overview of the main directories in this repository:
 *   **`resources`**: Static assets, including test videos, sample GIFs, and outputs.
 *   **`transfer_learning`**: Scripts focused on fine-tuning pre-trained models (specifically IR50).
 *   **`XAI_testing`**: Experimental code evaluating various Explainable AI methods (some approaches here were exploratory and did not end up in the final pipeline).
+
+## Model Performance and Efficiency
+
+| Model Architecture | Parameters (Millions) | Accuracy (CK+ & KDEF) |
+| :--- | :--- | :--- |
+| **ResNet18+SE** | 12.0 | 68.60% |
+| **EfficientNet V2-S** | 21.5 | 67.20% |
+| **IR50 (ArcFace)** | 43.6 | 64.67% |
+| **ResNet18** | 11.7 | 55.70% |
+| **ResNet34** | 21.8 | 51.30% |
+| **CCT-7** | 3.7 | 49.40% |
+| **Vim-Tiny** | 7.0 | 49.26% |
+| **GoogLeNet** | 6.8 | 47.50% |
+| **Basic CNN** | 0.5 | 16.60% |
 
 ## Demo
 
