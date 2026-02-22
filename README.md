@@ -49,7 +49,9 @@ Here is an overview of the main directories in this repository:
 
 ## Demo
 
-The demo demonstrates real-time emotion classification on video files or GIFs. It detects faces, classifies their prevailing emotion, and optionally overlays visual explanations (heatmaps) to show which parts of the face contributed most to the decision.
+The video demo demonstrates real-time emotion classification on video files or GIFs. It detects faces, classifies their prevailing emotion, and optionally overlays visual explanations (heatmaps) to show which parts of the face contributed most to the decision.
+
+The image demo loads all images located in a directory (and subdirectories). All iomage files are then fed hrough the model in batches and then converted to probabilities usinf the softmax function. The resulting probabilities are then written into a csv file together with the corresponding filename.
 
 ### Seting up the virtual environment
 
